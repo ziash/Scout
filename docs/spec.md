@@ -7,7 +7,7 @@
 | Status | **Phase 1 built** (29-Oct-2026): `Scout_Pine` compiles and runs on TradingView (ICMARKETS:EURUSD 1H). Owner review on more charts is due (§6 Phase 2) |
 | Document version | v1.0 (29-Oct-2026) — history in §8 |
 | Owner | Zeeshan |
-| Repository | `~/code/Scout` (not on GitHub yet) — separate from [Trader](https://github.com/ziash/Trader), [Rewind](https://github.com/ziash/Rewind) and [Levels](https://github.com/ziash/Levels) |
+| Repository | [github.com/ziash/Scout](https://github.com/ziash/Scout) (private) — separate from [Trader](https://github.com/ziash/Trader), [Rewind](https://github.com/ziash/Rewind) and [Levels](https://github.com/ziash/Levels) |
 | Family | **Scout_Pine** (Phase 1): TradingView indicator, `pine/Scout_Pine.pine`. **Scout** (later): a bot on Ubuntu that watches cTrader prices and places orders on the owner's click |
 | Accounts | Scout_Pine never trades. Scout: demo accounts only until a go-live is decided (Trader shared.md §4) |
 

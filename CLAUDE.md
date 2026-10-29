@@ -31,4 +31,4 @@ Standing instructions for Claude Code in this repository. Read this first, then 
 
 - Pine cannot be compiled here. Re-read the script against the spec and Pine v6 rules; if a TradingView session is available, paste it into the Pine Editor and check "Compiled. Added to chart."; otherwise say plainly that the owner's TradingView check is still due.
 - Prototype changes: rerun it on the markup windows (spec §2.3) and update that table.
-- Commit. Push only once the GitHub repository exists and the owner works from it.
+- Commit and `git push` (the owner works from GitHub `main`).
