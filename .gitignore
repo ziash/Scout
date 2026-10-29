@@ -1,0 +1,11 @@
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+*.swp
+TestResults/
+# Python prototype: downloaded candles and its virtual environment
+research/prototype/data/
+research/prototype/venv/
+__pycache__/

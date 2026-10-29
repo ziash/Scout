@@ -1,0 +1,312 @@
+//@version=6
+// Scout_Pine — implements docs/spec.md v1.0 §3
+//
+// Marks the owner's 1H setup: in a running trend, every time price pauses
+// ("profit taking": a few small candles or a small pull-back), place a stop order
+// just beyond the pause in the trend's direction:
+//   up-trend   -> Buy Stop above the pause
+//   down-trend -> Sell Stop below the pause
+// Every pause gets an order while the trend runs; some lose, that is part of the rule.
+//
+// Reversal: if a pause does not break in the trend's direction and starts rolling
+// over (lower highs in an up-trend, higher lows in a down-trend), a reversal stop
+// appears on the other side. If that one fills, the trend has turned.
+//
+// Order level ("Smart"): the wick high/low of the pause candles, but a candle whose
+// wick sticks out far beyond its body counts at its body.
+//
+// Only closed candles change the picture, so marks never repaint. The one exception
+// is the "level hit" alert, which fires as soon as price touches a pending level.
+//
+// Alerts: create one alert on the chart with condition "Any alert() function call".
+indicator("Scout_Pine", shorttitle = "Scout", overlay = true, max_lines_count = 500, max_labels_count = 500, max_boxes_count = 500, max_bars_back = 300)
+
+// ── Inputs ─────────────────────────────────────────────────────────────────────
+grpS      = "Setup"
+pushBody  = input.float(0.6, "Strong candle: body ≥ × ATR", minval = 0.1, step = 0.1, group = grpS)
+minMove   = input.float(1.5, "Move before a pause ≥ × ATR", minval = 0.0, step = 0.1, group = grpS)
+minPause  = input.int(2, "Pause: min candles", minval = 1, group = grpS)
+maxPause  = input.int(16, "Pause: max candles", minval = 2, maxval = 100, group = grpS)
+maxPauseH = input.float(3.0, "Pause: max height × ATR", minval = 0.5, step = 0.1, group = grpS)
+maxRetr   = input.float(0.6, "Pause: max pull-back of the move (0–1)", minval = 0.1, maxval = 1.0, step = 0.05, group = grpS)
+revMin    = input.int(4, "Reversal stop: after this many pause candles", minval = 2, group = grpS)
+flipATR   = input.float(3.0, "Trend turns: move against it ≥ × ATR", minval = 1.0, step = 0.5, group = grpS, tooltip = "…made by at least 2 strong candles out of the last 3")
+channel   = input.int(20, "Trend turns: strong candle closes beyond last N candles", minval = 5, group = grpS)
+atrLen    = input.int(14, "ATR length", minval = 2, group = grpS)
+
+grpL      = "Order level"
+levelMode = input.string("Smart", "Level at", options = ["Smart", "Wicks", "Bodies"], group = grpL, tooltip = "Smart: wicks, except a candle whose wick sticks out beyond its body by more than the limit below counts at its body")
+wickTol   = input.float(0.6, "Smart: long wick ≥ × ATR", minval = 0.1, step = 0.1, group = grpL)
+offsetTk  = input.int(0, "Extra distance beyond the level (ticks)", minval = 0, group = grpL)
+
+grpD      = "Display"
+histBars  = input.int(500, "Show setups in the last X candles", minval = 10, maxval = 5000, group = grpD)
+showRev   = input.bool(true, "Show reversal stops", group = grpD)
+showCxl   = input.bool(true, "Keep cancelled levels (dashed)", group = grpD)
+showBox   = input.bool(true, "Shade the pause", group = grpD)
+buyCol    = input.color(#1e5bff, "Buy Stop", group = grpD)
+sellCol   = input.color(#e53935, "Sell Stop", group = grpD)
+boxCol    = input.color(color.new(#ffd54f, 75), "Pause", group = grpD)
+
+grpA      = "Alerts (create one alert: “Any alert() function call”)"
+alNew     = input.bool(true, "New stop level", group = grpA)
+alMove    = input.bool(true, "Level moved", group = grpA)
+alRev     = input.bool(true, "Reversal stop", group = grpA)
+alHit     = input.bool(true, "Level hit (as it happens)", group = grpA)
+alCxl     = input.bool(true, "Level cancelled", group = grpA)
+alTurn    = input.bool(false, "Trend turned", group = grpA)
+
+// ── Series used by the state machine (computed on every bar) ──────────────────
+float atrPrev   = ta.atr(atrLen)[1]
+bool  pushUp    = close - open >= pushBody * atrPrev
+bool  pushDn    = open - close >= pushBody * atrPrev
+int   pushUpCnt = int(math.sum(pushUp ? 1 : 0, 3))
+int   pushDnCnt = int(math.sum(pushDn ? 1 : 0, 3))
+float chanHi    = ta.highest(high, channel)[1]
+float chanLo    = ta.lowest(low, channel)[1]
+float offset    = offsetTk * syminfo.mintick
+bool  drawOk    = bar_index >= last_bar_index - histBars
+
+// ── State (changes only on closed candles) ────────────────────────────────────
+var int   trend     = 0       // 1 up, -1 down, 0 not known yet
+var float ext       = na      // trend's extreme since the current move began
+var float moveStart = na      // where the current move began
+var int   ps        = na      // bar_index of the first pause candle
+var float pHi       = na      // pause high / low as of the last closed candle
+var float pLo       = na
+var float mainLvl   = na      // pending stop in the trend's direction
+var float ctrLvl    = na      // pending reversal stop
+var line  mainLine  = na
+var line  ctrLine   = na
+var label mainLab   = na
+var label ctrLab    = na
+var box   pauseBox  = na
+
+name(int d) =>
+    d == 1 ? "Buy Stop" : "Sell Stop"
+
+col(int d) =>
+    d == 1 ? buyCol : sellCol
+
+say(string msg) =>
+    alert(syminfo.ticker + " " + timeframe.period + ": " + msg, alert.freq_once_per_bar_close)
+
+fmt(float v) =>
+    str.tostring(v, format.mintick)
+
+// Ends both pending orders' drawings. hitWhich: 1 = main filled, -1 = reversal filled, 0 = neither.
+// The caller then resets the drawing ids (a function cannot change them).
+finish(int hitWhich, int d) =>
+    if hitWhich == 1
+        line.set_x2(mainLine, bar_index)
+        if drawOk
+            label.new(bar_index, mainLvl, "", color = col(d), style = d == 1 ? label.style_triangleup : label.style_triangledown, yloc = d == 1 ? yloc.belowbar : yloc.abovebar, size = size.tiny)
+    else if not na(mainLvl)
+        if showCxl
+            line.set_x2(mainLine, bar_index)
+            line.set_style(mainLine, line.style_dashed)
+            line.set_color(mainLine, color.new(col(d), 60))
+        else
+            line.delete(mainLine)
+            box.delete(pauseBox)
+    if hitWhich == -1
+        line.set_x2(ctrLine, bar_index)
+        if drawOk
+            label.new(bar_index, ctrLvl, "", color = col(-d), style = d == 1 ? label.style_triangledown : label.style_triangleup, yloc = d == 1 ? yloc.abovebar : yloc.belowbar, size = size.tiny)
+    else
+        line.delete(ctrLine)
+    label.delete(mainLab)
+    label.delete(ctrLab)
+
+// ── Level hit, as it happens (the only intrabar part) ─────────────────────────
+if not barstate.isconfirmed and alHit and trend != 0
+    if not na(mainLvl) and (trend == 1 ? high >= mainLvl : low <= mainLvl)
+        alert(syminfo.ticker + " " + timeframe.period + ": " + name(trend) + " at " + fmt(mainLvl) + " hit", alert.freq_once_per_bar)
+    if not na(ctrLvl) and (trend == 1 ? low <= ctrLvl : high >= ctrLvl)
+        alert(syminfo.ticker + " " + timeframe.period + ": reversal " + name(-trend) + " at " + fmt(ctrLvl) + " hit", alert.freq_once_per_bar)
+
+// ── Closed candle: run the rules ──────────────────────────────────────────────
+if barstate.isconfirmed and not na(atrPrev)
+    int  d       = trend
+    bool hitMain = d != 0 and not na(mainLvl) and (d == 1 ? high >= mainLvl : low <= mainLvl)
+    bool hitCtr  = d != 0 and not na(ctrLvl) and (d == 1 ? low <= ctrLvl : high >= ctrLvl)
+
+    // 1. Pending orders filled on this candle
+    if hitMain
+        finish(1, d)
+        mainLine  := na
+        ctrLine   := na
+        mainLab   := na
+        ctrLab    := na
+        pauseBox  := na
+        ps      := na
+        mainLvl := na
+        ctrLvl  := na
+    else if hitCtr
+        finish(-1, d)
+        mainLine  := na
+        ctrLine   := na
+        mainLab   := na
+        ctrLab    := na
+        pauseBox  := na
+        if alTurn
+            say("trend turned " + (d == 1 ? "down" : "up") + " (reversal stop filled)")
+        trend     := -d
+        d         := -d
+        ext       := d == 1 ? high : low
+        moveStart := d == 1 ? pLo : pHi
+        ps        := na
+        mainLvl   := na
+        ctrLvl    := na
+
+    float body = close - open
+    bool  push = math.abs(body) >= pushBody * atrPrev
+
+    // 2. First trend: the first strong candle
+    if trend == 0
+        if push
+            trend     := body > 0 ? 1 : -1
+            ext       := trend == 1 ? high : low
+            moveStart := trend == 1 ? low : high
+    else
+        d   := trend
+        ext := d == 1 ? math.max(ext, high) : math.min(ext, low)
+        bool flipped = false
+
+        // 3. Trend turns: a strong move against it, or a strong candle breaking the recent range
+        if not (hitMain or hitCtr)
+            int  against = d == 1 ? pushDnCnt : pushUpCnt
+            bool brk     = d == 1 ? (pushDn and close < chanLo) : (pushUp and close > chanHi)
+            if ((ext - close) * d >= flipATR * atrPrev and against >= 2) or brk
+                if not na(mainLvl) and alCxl
+                    say(name(d) + " at " + fmt(mainLvl) + " cancelled (trend turned)")
+                finish(0, d)
+                mainLine  := na
+                ctrLine   := na
+                mainLab   := na
+                ctrLab    := na
+                pauseBox  := na
+                if alTurn
+                    say("trend turned " + (d == 1 ? "down" : "up"))
+                trend     := -d
+                d         := -d
+                moveStart := ext
+                ext       := d == 1 ? high : low
+                ps        := na
+                mainLvl   := na
+                ctrLvl    := na
+                flipped   := true
+
+        // 4. The pause (the candle that filled an order belongs to the move, not to a pause)
+        if not flipped and not (hitMain or hitCtr)
+            // A new extreme before any order exists: the move is still going, restart the pause here.
+            if not na(ps) and na(mainLvl)
+                int nPrev = bar_index - ps
+                if nPrev >= 1
+                    float prevHi = high[1]
+                    float prevLo = low[1]
+                    for k = 1 to nPrev
+                        prevHi := math.max(prevHi, high[k])
+                        prevLo := math.min(prevLo, low[k])
+                    if d == 1 ? high > prevHi : low < prevLo
+                        ps := na
+
+            if na(ps)
+                bool withTrendPush = push and math.sign(body) == d
+                if not withTrendPush and (ext - moveStart) * d >= minMove * atrPrev
+                    ps := bar_index
+
+            if not na(ps)
+                int   n    = bar_index - ps + 1
+                int   half = math.floor(n / 2)
+                float wHi  = high
+                float wLo  = low
+                float upL  = na      // level above the pause
+                float dnL  = na      // level below the pause
+                float recHi = na     // most recent half of the pause
+                float recLo = na
+                float oldHi = na     // older half
+                float oldLo = na
+                for k = 0 to n - 1
+                    float h  = high[k]
+                    float l  = low[k]
+                    float bt = math.max(open[k], close[k])
+                    float bb = math.min(open[k], close[k])
+                    float u  = levelMode == "Wicks" ? h : levelMode == "Bodies" ? bt : (h - bt > wickTol * atrPrev ? bt : h)
+                    float w  = levelMode == "Wicks" ? l : levelMode == "Bodies" ? bb : (bb - l > wickTol * atrPrev ? bb : l)
+                    wHi := math.max(wHi, h)
+                    wLo := math.min(wLo, l)
+                    upL := na(upL) ? u : math.max(upL, u)
+                    dnL := na(dnL) ? w : math.min(dnL, w)
+                    if k < half
+                        recHi := na(recHi) ? h : math.max(recHi, h)
+                        recLo := na(recLo) ? l : math.min(recLo, l)
+                    else
+                        oldHi := na(oldHi) ? h : math.max(oldHi, h)
+                        oldLo := na(oldLo) ? l : math.min(oldLo, l)
+
+                float moveSize = math.max((ext - moveStart) * d, syminfo.mintick)
+                float retr     = (ext - (d == 1 ? wLo : wHi)) * d / moveSize
+                if n > maxPause or wHi - wLo > maxPauseH * atrPrev or retr > maxRetr
+                    // Not a pause any more: cancel, and let the pull-back be the base of the next move.
+                    if not na(mainLvl) and alCxl
+                        say(name(d) + " at " + fmt(mainLvl) + " cancelled (pause too long or too deep)")
+                    finish(0, d)
+                    mainLine  := na
+                    ctrLine   := na
+                    mainLab   := na
+                    ctrLab    := na
+                    pauseBox  := na
+                    moveStart := d == 1 ? wLo : wHi
+                    ext       := d == 1 ? high : low
+                    ps        := na
+                    mainLvl   := na
+                    ctrLvl    := na
+                else
+                    pHi := wHi
+                    pLo := wLo
+
+                    // Stop in the trend's direction
+                    if n >= minPause
+                        float lvl = d == 1 ? upL + offset : dnL - offset
+                        if na(mainLvl)
+                            if drawOk
+                                mainLine := line.new(ps, lvl, bar_index + 1, lvl, color = col(d), width = 2)
+                                mainLab  := label.new(bar_index + 1, lvl, name(d) + " " + fmt(lvl), color = color.new(color.white, 100), textcolor = col(d), style = label.style_label_left, size = size.small)
+                                if showBox
+                                    pauseBox := box.new(ps, wHi, bar_index, wLo, border_color = color.new(boxCol, 100), bgcolor = boxCol)
+                            if alNew
+                                say("new " + name(d) + " at " + fmt(lvl))
+                        else if lvl != mainLvl
+                            line.set_y1(mainLine, lvl)
+                            line.set_y2(mainLine, lvl)
+                            if alMove
+                                say(name(d) + " moved " + fmt(mainLvl) + " → " + fmt(lvl))
+                        mainLvl := lvl
+                        line.set_x2(mainLine, bar_index + 1)
+                        label.set_xy(mainLab, bar_index + 1, lvl)
+                        label.set_text(mainLab, name(d) + " " + fmt(lvl))
+                        box.set_top(pauseBox, wHi)
+                        box.set_bottom(pauseBox, wLo)
+                        box.set_right(pauseBox, bar_index)
+
+                    // Reversal stop once the pause rolls over (lower highs / higher lows)
+                    if n >= revMin and (d == 1 ? recHi < oldHi : recLo > oldLo)
+                        float rl = d == 1 ? dnL - offset : upL + offset
+                        if na(ctrLvl)
+                            if drawOk and showRev
+                                ctrLine := line.new(ps, rl, bar_index + 1, rl, color = col(-d), width = 1, style = line.style_dotted)
+                                ctrLab  := label.new(bar_index + 1, rl, "Reversal " + name(-d) + " " + fmt(rl), color = color.new(color.white, 100), textcolor = col(-d), style = label.style_label_left, size = size.small)
+                            if alRev
+                                say("pause rolling over: reversal " + name(-d) + " at " + fmt(rl))
+                        else if rl != ctrLvl
+                            line.set_y1(ctrLine, rl)
+                            line.set_y2(ctrLine, rl)
+                        ctrLvl := rl
+                        line.set_x2(ctrLine, bar_index + 1)
+                        label.set_xy(ctrLab, bar_index + 1, rl)
+                        label.set_text(ctrLab, "Reversal " + name(-d) + " " + fmt(rl))
+
+// Pending levels in the Data Window (also handy for checking values).
+plot(mainLvl, "Pending stop", color = trend == 1 ? buyCol : sellCol, style = plot.style_linebr, display = display.data_window)
+plot(ctrLvl, "Pending reversal stop", color = trend == 1 ? sellCol : buyCol, style = plot.style_linebr, display = display.data_window)
