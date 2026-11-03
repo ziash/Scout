@@ -4,7 +4,7 @@ Standing instructions for Claude Code in this repository. Read this first, then 
 
 ## What this project is
 
-**Scout**: finds the owner's "pause, then stop order" setup (spec §2) on many symbols and timeframes. **Scout_Pine** (Phase 1) is a TradingView indicator that marks the setups and sends alerts; the owner places the orders by hand in cTrader and TM manages them. **Scout** (later) is a bot that watches cTrader prices and places the orders on the owner's click. Spec: `docs/spec.md` (single source of truth).
+**Scout**: finds the owner's "pause, then stop order" setup (spec §2) on many symbols and timeframes. **Scout_Pine** (Phase 1) is a TradingView indicator that marks the setups and sends alerts; the owner places the orders by hand in cTrader and TM manages them. **Scout** (later) is a C# bot that watches cTrader prices and, per symbol, alerts (Watch mode) or places the first stop order (Trade mode); TM manages everything after. Its code lives in the Trader repository (`src/Trader.Scout`, spec §4.5). Spec: `docs/spec.md` (single source of truth).
 
 ## Working rules
 
@@ -17,7 +17,7 @@ Standing instructions for Claude Code in this repository. Read this first, then 
 
 ## Separation and safety
 
-- Nothing in this repository connects to a broker or places orders until spec §7 q1 is decided and recorded. Scout_Pine never trades.
+- Nothing in this repository connects to a broker or places orders: the bot's code is in Trader (spec §7 q1, answered v1.1). Scout_Pine never trades.
 - Never read, write or print `~/.config/trader/secrets.env`; never change `~/code/Trader` or `~/tradebot/`, and never stop, restart or redeploy Trader's services from here. A Trader change (e.g. adding `"Scout-"` to TM's `takeOver`) is made in the Trader repository under its own rules, on the owner's go.
 - Demo accounts only, ever, until a go-live is decided (Trader shared.md §4).
 
@@ -25,7 +25,7 @@ Standing instructions for Claude Code in this repository. Read this first, then 
 
 - **Scout_Pine:** Pine Script v6, one file `pine/Scout_Pine.pine`. The second comment line carries the spec version it implements. Only closed candles change the state (no repainting); the "level hit" alert is the one intrabar part.
 - **Prototype:** `research/prototype/proto.py` (Python, pandas) runs the same rules in the same order as Scout_Pine. Keep the two in step. Downloaded candles (`research/prototype/data/`) and the venv are never committed.
-- **Scout bot (later):** C#, .NET 10 LTS, nullable on, warnings as errors; layout and conventions as in Trader.
+- **Scout bot (later):** C#, .NET 10 LTS, `src/Trader.Scout` in the Trader repository, under Trader's CLAUDE.md and conventions.
 
 ## Before finishing a task
 

@@ -1,14 +1,14 @@
 # Scout — specification
 
-**Scout watches the markets for the owner's "pause, then stop order" setup and says where to put the order.** In a running trend, every time price pauses for profit taking, the owner places a Buy Stop above the pause (up-trend) or a Sell Stop below it (down-trend). Scout finds these pauses on many symbols and timeframes and alerts the owner. Later, on the owner's click, it places the orders itself and hands them to TM.
+**Scout watches the markets for the owner's "pause, then stop order" setup and says where to put the order.** In a running trend, every time price pauses for profit taking, the owner places a Buy Stop above the pause (up-trend) or a Sell Stop below it (down-trend). Scout finds these pauses on many symbols and timeframes and alerts the owner (**Watch** mode), or places the entry stop order itself (**Trade** mode). Scout's job ends with that first order: TM manages everything after it (mirror, hedges, break-even, trailing stop).
 
 | Item | Value |
 |---|---|
-| Status | **Phase 1 built** (29-Oct-2026): `Scout_Pine` compiles and runs on TradingView (ICMARKETS:EURUSD 1H). Owner review on more charts is due (§6 Phase 2) |
-| Document version | v1.0 (29-Oct-2026) — history in §8 |
+| Status | **Phase 1 built** (29-Oct-2026): `Scout_Pine` compiles and runs on TradingView (ICMARKETS:EURUSD 1H). **Scout bot agreed** (03-Nov-2026, §4): Open API service in the Trader repository, Watch and Trade modes; nothing built yet (§6 Phase 3) |
+| Document version | v1.1 (03-Nov-2026) — history in §8 |
 | Owner | Zeeshan |
 | Repository | [github.com/ziash/Scout](https://github.com/ziash/Scout) (public) — separate from [Trader](https://github.com/ziash/Trader), [Rewind](https://github.com/ziash/Rewind) and [Levels](https://github.com/ziash/Levels) |
-| Family | **Scout_Pine** (Phase 1): TradingView indicator, `pine/Scout_Pine.pine`. **Scout** (later): a bot on Ubuntu that watches cTrader prices and places orders on the owner's click |
+| Family | **Scout_Pine** (Phase 1): TradingView indicator, `pine/Scout_Pine.pine`. **Scout** (Phases 3–5): a C# bot on Ubuntu that watches cTrader prices; code in Trader as `src/Trader.Scout` (§4, §5) |
 | Accounts | Scout_Pine never trades. Scout: demo accounts only until a go-live is decided (Trader shared.md §4) |
 
 ---
@@ -34,7 +34,7 @@ Learned from the owner's chart and markups (29-Oct-2026), not from fixed numbers
 | 1 | **Trend direction first.** At a pause, the stop goes in the direction of the move: Buy Stop above in an up-trend, Sell Stop below in a down-trend | Original chart: one Buy Stop in the rally, four Sell Stops in the fall |
 | 2 | **Every pause gets an order** while the trend runs — a staircase of entries. Losers are part of it | *"In real time the trader would not know which entries would become profitable… the trader needs to take all entries where the price goes a little back (profit taking)."* BTCUSD_Modified: 4 entries per trend, one a loser |
 | 3 | **A pause** is 2 or more small candles, or a small bounce against the trend; it stays near the end of the move | Markups: pauses of 2–5 candles; the EURUSD top range ~12 candles |
-| 4 | **Level** at the wick high/low of the pause candles; a candle whose wick sticks out far beyond its body counts at its body | Matches most lines (EURUSD 1.1194, GBPJPY 211.98, BTC 81,000). Not confirmed by the owner — §7 q4 |
+| 4 | **Level** at the wick high/low of the pause candles; a candle whose wick sticks out far beyond its body counts at its body ("Smart") | Matches most lines (EURUSD 1.1194, GBPJPY 211.98, BTC 81,000). **Confirmed by the owner 03-Nov-2026** (§7 q4) |
 | 5 | **Reversal = a failed pause.** If the trend-direction stop does not fill and the pause rolls over (lower highs at a top, higher lows at a bottom), place the opposite stop under/over the pause. If it fills, the trend has turned | Owner on the EURUSD top (6–7 Oct): *"I would have made a buy stop first which would not have triggered, giving the picture"* |
 | 6 | **The end of a trend needs no call.** The last order of a trend does not fill, or loses | EURUSD 1.1215 and 1.1174, GBPJPY 210.03 |
 
@@ -108,21 +108,56 @@ Chart the broker's own symbol (e.g. `ICMARKETS:EURUSD`) so levels match cTrader.
 
 Compiled and added to the chart in TradingView: ICMARKETS:EURUSD 1H — "Compiled. Added to chart.", no runtime error. Recent candles (27–29 Oct) showed the staircase of Sell Stops in the fall, reversal Buy Stops at the bottom and a reversal Sell Stop after the bounce. Not yet compared with the markups on IC Markets prices.
 
-## 4. Scout bot (later — proposal, not agreed)
+## 4. Scout bot (agreed 03-Nov-2026)
 
-| Part | Proposal |
+A C# program that runs the same detector as Scout_Pine (§3.1, §3.2) on the broker's own candles and either alerts or places the first order. Scout_Pine stays as the chart view on TradingView.
+
+### 4.1 Modes
+
+| Mode | What Scout does on a new setup | Orders |
+|---|---|---|
+| **Watch** | Sends an alert: symbol, timeframe, side, level, e.g. `EURUSD 1H: new Buy Stop at 1.11645` | None |
+| **Trade** | Places the entry stop order at the level (Buy Stop above the pause, Sell Stop below), label `Scout-<instance>-…`, and sends the same alert saying it was placed | One pending stop per setup |
+
+The mode is set per symbol × timeframe in Scout's config, so a chart can be watched before it is traded.
+
+### 4.2 Scout places the first order; TM does the rest (owner, 03-Nov-2026)
+
+- Scout only **alerts or places the entry order**. It never moves, amends or closes an order or a position afterwards, and sets no trailing stop.
+- TM takes the order over by its label (`"Scout-"` in TM's `takeOver`, Trader tm.md §2.1 v1.6): mirror order beside it, hedges once filled, break-even at 1R, trailing stop (tm.md §3.1, §5).
+- **Gap:** TM never changes an order it did not place (tm.md §2), so nobody removes a Scout stop whose setup is gone (pause cancelled, trend turned) and that never filled. See §7 q7.
+
+### 4.3 Alerts
+
+Channel open (§7 q8). First: the desktop pop-ups and `events.csv` of Trader's shared notifications (`Trader.Core/Notifications`, `notifications.json`), which TM already uses; Telegram or another channel later, as a new channel there, without a change to Scout. Alert kinds as Scout_Pine's (§3.4); in Trade mode also "order placed" and "order rejected".
+
+### 4.4 Improvements over Scout_Pine v1.0 (owner, 03-Nov-2026)
+
+| # | Improvement | First idea, to be tuned against the markups (§2.2) |
+|---|---|---|
+| I1 | **Higher-timeframe trend** | A 1H pause is checked against the trend on 4H (and 1D) from the same detector. A setup against it is marked weaker, or skipped in Trade mode — which of the two, and which pairs of timeframes, is §7 q9. A setting, off/on, so its effect on the markups can be seen |
+| I2 | Level: Smart rule | Confirmed (§2.1 rule 4, §7 q4); stays the default |
+| I3 | No moving stops | §4.2: Scout's order is never moved; TM manages it |
+
+Entry rules will be refined further by the owner ("we will further refine its entries"); each change is checked against the markups before it becomes a default (CLAUDE.md rule 3).
+
+### 4.5 How it runs
+
+| Part | Decision |
 |---|---|
-| What | Watches a list of symbol × timeframe (e.g. BTCUSD 1D/4H/1H, GBPJPY 4H) on the broker's own candles; shows setups on a web page; on the owner's click, places one stop order per pause until stopped |
-| Prices and orders | cTrader Open API, demo only. Orders carry the label `Scout-<instance>-…`; TM takes them over once `"Scout-"` is in TM's `takeOver` (Trader tm.md §2.1, v1.6), so TM mirrors, hedges and manages them |
-| Language | C# / .NET 10 (open source, runs on Linux) — the rest of the owner's bots use it |
-| Web page | ASP.NET Core inside the bot, `http://localhost:5080`, live updates (SignalR), TradingView Lightweight Charts (free, open source) — laptop only at first; a login and HTTPS before it is reachable from elsewhere (VPS later) |
+| Prices and orders | cTrader **Open API** (Spotware's interface that programs use to talk to cTrader's servers), demo accounts only (Trader shared.md §4); trendbars (candles) of the broker's own symbols, closed candles only, as in Scout_Pine |
+| Code | `src/Trader.Scout` in the Trader repository (§7 q1), reusing Trader.Core: connection, tokens, market data, orders, notifications, instance registry; Trader's safety rules (labels, ownership, demo only) apply |
+| Language | C# / .NET 10 LTS |
+| Service | A systemd user service `trader-scout` like `trader-tm`, from a published build in `~/tradebot/bin/Scout` |
 | Storage | JSON files under `~/tradebot/` like TM; no database |
-| Tests | The owner's markups (§2.2) as test cases |
+| Tests | The detector as a library with no broker connection, tested against the owner's markups (§2.2, §2.3 table) and against the prototype on the same candles |
+| Web page | Not needed for Watch or Trade; maybe later (§6 Phase 6) |
 
 ## 5. Separation
 
 - Scout_Pine never trades and needs nothing from Trader.
-- Scout (bot) will place orders, so it falls under Trader's safety rules (demo only, labels, ownership, protection). Where its code lives is open (§7 q1). Until decided, nothing in this repository connects to a broker, and nothing of Trader's (`~/code/Trader`, `~/tradebot/`, `~/.config/trader/`) is read or changed from here.
+- The Scout bot places orders, so its code lives in the Trader repository (`src/Trader.Scout`) under Trader's rules, with its own bot document `docs/bots/scout.md` there for running details (config, labels, service) that points back here for the setup rules. This repository keeps Scout_Pine, this spec (setup, modes, improvements), the markups and the prototype.
+- Nothing in this repository connects to a broker, and nothing of Trader's (`~/code/Trader`, `~/tradebot/`, `~/.config/trader/`) is read or changed from here. Trader changes are made in the Trader repository on the owner's go.
 
 ## 6. Phases
 
@@ -131,24 +166,29 @@ Compiled and added to the chart in TradingView: ICMARKETS:EURUSD 1H — "Compile
 | 0 | Repo and spec | Done 29-Oct-2026 |
 | 1 | Scout_Pine: marks and alerts on TradingView | Built 29-Oct-2026; compiles (§3.6) |
 | 2 | Owner review on more charts; tune §3.2 | Due |
-| 3 | Scout detector in C#, tested against the markups | — |
-| 4 | Scout live watch + alerts (cTrader prices) | — |
-| 5 | Web page: watchlist, setups, Start/Stop | — |
-| 6 | Orders on the owner's click, handed to TM | — |
+| 3 | Scout detector in C# (`src/Trader.Scout`, no broker), same results as Scout_Pine / the prototype on the markups; then I1 higher-timeframe trend (§4.4) | — |
+| 4 | **Watch** mode: live cTrader demo candles, alerts (§4.1, §4.3); `trader-scout` service | — |
+| 5 | **Trade** mode: Scout places the entry stop; `"Scout-"` added to TM's `takeOver` (Trader change); checked on Rewind, then on a demo | — |
+| 6 | Optional: web page (watchlist, setups, Start/Stop) | — |
 
 ## 7. Open questions
 
 | # | Question | Notes |
 |---|---|---|
-| 1 | Where does the Scout bot's code live? | (a) `src/Trader.Scout` in Trader, reusing Trader.Core (connection, tokens, orders, notifications) and its safety rules; (b) here, with Trader.Core pieces copied. Recommendation: (a) for the bot, this repo for Scout_Pine, spec and research |
+| 1 | ~~Where does the Scout bot's code live?~~ — **answered 03-Nov-2026: (a)** an Open API service, `src/Trader.Scout` in Trader, reusing Trader.Core; this repo for Scout_Pine, spec and research (§4.5, §5) | — |
 | 2 | Lot size | TM's mirror doubles it: a 0.5 Scout order becomes 1.0 once filled |
 | 3 | Stop-loss on Scout's orders | If set at the far side of the pause, TM uses it as the hedge level H; without one, TM uses 15 % of the 3-day range |
-| 4 | Level: wicks or bodies? | Smart default fits most markups; owner to confirm |
-| 5 | Unfilled stop when the next pause forms | Scout_Pine keeps one pending stop per trend; a new pause replaces a cancelled one. Bot: move or cancel? |
+| 4 | ~~Level: wicks or bodies?~~ — **answered 03-Nov-2026: Smart** (owner) | — |
+| 5 | ~~Unfilled stop when the next pause forms: move or cancel?~~ — **answered 03-Nov-2026**: Scout never moves stops; it only places the first order or alerts; TM manages after that (§4.2) | Leaves q7 |
 | 6 | Number of setups | ~2–3 per chart per day on 1H; stricter settings if too many |
+| 7 | Who removes a Scout stop that never filled once its setup is gone? TM does not touch orders it did not place (tm.md §2) | Options: (a) Scout gives each order an expiry time on the server (e.g. after N candles) — no later action by Scout; (b) the owner cancels by hand after an alert; (c) a new TM rule for `Scout-` orders. Recommendation: (a) |
+| 8 | Alert channel | Desktop pop-ups via Trader's notifications first; Telegram or other later (§4.3) |
+| 9 | Higher-timeframe trend (I1): skip the setup or only mark it? Which timeframe checks which (1H←4H, 4H←1D)? | Decided from the markups once I1 is built |
+| 10 | Trade mode: are reversal stops (§2.1 rule 5) placed as orders too, or only alerted? | Each is the first order of a new trend |
 
 ## 8. History
 
 | Version | Date | Change |
 |---|---|---|
 | v1.0 | 29-Oct-2026 | Repo created. Setup rules from the owner's markups (§2), Scout_Pine Phase 1 (§3), bot proposal (§4), open questions (§7) |
+| v1.1 | 03-Nov-2026 | **Scout bot agreed** (owner, §4): Open API service in Trader (`src/Trader.Scout`, q1 answered); **Watch** and **Trade** modes; Scout only alerts or places the first order, TM manages the rest (q5 answered); Smart level confirmed (q4); improvement I1 higher-timeframe trend; alert channel open. Phases 3–6 reshaped (§6). New open questions q7–q10 |

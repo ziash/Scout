@@ -6,10 +6,10 @@ In a running trend, every pause for profit taking gets a stop order just beyond 
 
 | Item | Value |
 |---|---|
-| Status | **Phase 1 built** (29-Oct-2026): Scout_Pine compiles and runs on TradingView; owner review due |
+| Status | **Phase 1 built** (29-Oct-2026): Scout_Pine compiles and runs on TradingView. **Scout bot agreed** (03-Nov-2026): C#, Watch and Trade modes; not built yet |
 | Specification | [docs/spec.md](docs/spec.md) — the single source of truth (setup rules, settings, phases, open questions, history) |
 | Scout_Pine | [pine/Scout_Pine.pine](pine/Scout_Pine.pine) — TradingView indicator, Pine Script v6 |
-| Scout (bot) | Later: watches cTrader prices, places orders on your click, hands them to TM ([spec §4](docs/spec.md#4-scout-bot-later--proposal-not-agreed)) |
+| Scout (bot) | Watches cTrader prices; **Watch** mode alerts, **Trade** mode places the first stop order and TM manages the rest. Code in Trader as `src/Trader.Scout` ([spec §4](docs/spec.md#4-scout-bot-agreed-03-nov-2026)) |
 | Research | [research/setup-examples](research/setup-examples) — the marked-up charts; [research/prototype](research/prototype) — the Python check of the rules |
 | Related | [Trader](https://github.com/ziash/Trader) (TM manages the orders you place), [Rewind](https://github.com/ziash/Rewind), [Levels](https://github.com/ziash/Levels) |
 
@@ -20,10 +20,10 @@ In a running trend, every pause for profit taking gets a stop order just beyond 
 | 0 | Repo and spec | Done |
 | 1 | Scout_Pine: marks and alerts | Built 29-Oct-2026 |
 | 2 | Owner review, tuning | Due |
-| 3 | Scout detector in C# + tests | — |
-| 4 | Scout live watch + alerts | — |
-| 5 | Web page | — |
-| 6 | Orders via TM | — |
+| 3 | Scout detector in C# + tests; higher-timeframe trend | — |
+| 4 | Watch mode: live alerts | — |
+| 5 | Trade mode: first order, TM manages | — |
+| 6 | Web page (optional) | — |
 
 ## Add Scout_Pine to TradingView
 
