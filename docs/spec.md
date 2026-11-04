@@ -4,8 +4,8 @@
 
 | Item | Value |
 |---|---|
-| Status | **Phase 1 built** (29-Oct-2026): `Scout_Pine` compiles and runs on TradingView (ICMARKETS:EURUSD 1H). **Scout bot agreed** (03-Nov-2026, §4): Open API service in the Trader repository, Watch and Trade modes. **Trial run from 03-Nov-2026** (§4.6): Trade mode, 0.1 lot, 1H, six symbols on both demos, TM managing; review after one week |
-| Document version | v1.2 (03-Nov-2026) — history in §8 |
+| Status | **Phase 1 built** (29-Oct-2026): `Scout_Pine` compiles and runs on TradingView (ICMARKETS:EURUSD 1H). **Scout bot agreed** (03-Nov-2026, §4): Open API service in the Trader repository, Watch and Trade modes. **Trial run from 03-Nov-2026** (§4.6): Trade mode, 0.1 lot, 1H, TM managing; review after one week. From 04-Nov-2026: IC Markets only, 18 symbols (§4.6) |
+| Document version | v1.3 (04-Nov-2026) — history in §8 |
 | Owner | Zeeshan |
 | Repository | [github.com/ziash/Scout](https://github.com/ziash/Scout) (public) — separate from [Trader](https://github.com/ziash/Trader), [Rewind](https://github.com/ziash/Rewind) and [Levels](https://github.com/ziash/Levels) |
 | Family | **Scout_Pine** (Phase 1): TradingView indicator, `pine/Scout_Pine.pine`. **Scout** (Phases 3–5): a C# bot on Ubuntu that watches cTrader prices; code in Trader as `src/Trader.Scout` (§4, §5) |
@@ -162,11 +162,11 @@ Entry rules will be refined further by the owner ("we will further refine its en
 | Start | 03-Nov-2026, as the systemd service `trader-scout`; TM (`trader-tm`) running with `"Scout-"` in `takeOver` |
 | Mode | **Trade** on every chart below |
 | Timeframe | **1H** (4H for the I1 tag only) |
-| Symbols | TM's six: AUDJPY, EURGBP, EURUSD, GBPJPY, BTCUSD, ETHUSD |
-| Accounts | Both demos: IC Markets (brokerA) and Pepperstone (brokerB); each runs its own detector on its own candles |
+| Symbols | From 04-Nov-2026 (owner), top three per market: EURUSD, GBPUSD, USDJPY; GBPJPY, EURJPY, AUDJPY; XAUUSD, XAGUSD, XPTUSD; US500, USTEC, DE40; XTIUSD, XBRUSD, XNGUSD; BTCUSD, ETHUSD, SOLUSD. 03–04 Nov: TM's six (AUDJPY, EURGBP, EURUSD, GBPJPY, BTCUSD, ETHUSD) |
+| Accounts | From 04-Nov-2026: IC Markets (brokerA) only. 03–04 Nov: both demos, IC Markets and Pepperstone (brokerB), each with its own detector on its own candles |
 | Size | **0.1 lot** per Scout order; TM's mirror adds the same, so 0.2 lot per trade (q2) |
 | Logs | Scout: every setup event and every order, fill and close (Trader `docs/bots/scout.md` §3); TM: its own `actions.csv` |
-| Review | After one week (≈ 10-Nov-2026): from both bots' logs, score the setups — fill rate, win rate and R per trade, *with* vs *against* the 4H trend, main vs reversal stops, per symbol and broker — and suggest changes to the rules (§3.2) |
+| Review | After one week (≈ 10-Nov-2026): from both bots' logs, score the setups — fill rate, win rate and R per trade, *with* vs *against* the 4H trend, main vs reversal stops, per symbol, market and broker — and suggest changes to the rules (§3.2) |
 
 ## 5. Separation
 
@@ -208,3 +208,4 @@ Entry rules will be refined further by the owner ("we will further refine its en
 | v1.0 | 29-Oct-2026 | Repo created. Setup rules from the owner's markups (§2), Scout_Pine Phase 1 (§3), bot proposal (§4), open questions (§7) |
 | v1.1 | 03-Nov-2026 | **Scout bot agreed** (owner, §4): Open API service in Trader (`src/Trader.Scout`, q1 answered); **Watch** and **Trade** modes; Scout only alerts or places the first order, TM manages the rest (q5 answered); Smart level confirmed (q4); improvement I1 higher-timeframe trend; alert channel open. Phases 3–6 reshaped (§6). New open questions q7–q10 |
 | v1.2 | 03-Nov-2026 | **Decisions for the trial run** (owner asked Claude to choose, §4.6): q7 Scout cancels its own unfilled order when the setup ends + server expiry after 16 candles; q9 higher-timeframe trend marked only; q10 reversal stops placed as orders, one cancels the other; q3 stop-loss at the far side of the pause with trailing on; q2 0.1 lot. Trial from 03-Nov-2026 in Trade mode on 1H, six symbols, both demos; review after a week |
+| v1.3 | 04-Nov-2026 | **Trial widened** (owner, §4.6): IC Markets only, 18 symbols — top three per market (forex majors, forex crosses, metals, indices, energies, crypto); Pepperstone dropped. Same rules, mode, timeframe and lot size. Trader: scout.md v1.4 |
