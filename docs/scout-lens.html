@@ -1,0 +1,711 @@
+<title>Scout Lens</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each option is a band with facts, pros/cons, then two charts side by side (stacked on phones). */
+:root{
+  --bg:#f4f6f9; --surface:#ffffff; --ink:#12151a; --ink-2:#47505e; --muted:#7a8291; --rule:#dce1e8;
+  --accent:#1c4f95; --accent-soft:#e7eef8;
+  --up:#2a78d6; --down:#eb6834; --pause:#2a78d61c; --zone:#eb683424;
+  --good:#16794a; --good-bg:#e3f3e9; --bad:#b8382a; --bad-bg:#fbe8e4; --warn:#9a6300; --warn-bg:#fbf0d9;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1116; --surface:#161a21; --ink:#e9ecf1; --ink-2:#b3bac6; --muted:#8a92a1; --rule:#2a303b;
+  --accent:#86b6ef; --accent-soft:#1a2738;
+  --up:#3987e5; --down:#d95926; --pause:#3987e529; --zone:#d9592633;
+  --good:#52c483; --good-bg:#13301f; --bad:#f07b6c; --bad-bg:#3a1b17; --warn:#e3ab3c; --warn-bg:#33270f;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1116; --surface:#161a21; --ink:#e9ecf1; --ink-2:#b3bac6; --muted:#8a92a1; --rule:#2a303b;
+  --accent:#86b6ef; --accent-soft:#1a2738;
+  --up:#3987e5; --down:#d95926; --pause:#3987e529; --zone:#d9592633;
+  --good:#52c483; --good-bg:#13301f; --bad:#f07b6c; --bad-bg:#3a1b17; --warn:#e3ab3c; --warn-bg:#33270f;
+  color-scheme:dark}
+
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+.wrap{max-width:1080px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);font-stretch:85%;text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:clamp(40px,7vw,64px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:clamp(28px,4vw,36px);font-weight:700}
+h3{font-size:18px;font-weight:700;font-stretch:90%}
+p{margin:0;max-width:68ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+code,.mono{font-family:var(--mono);font-size:.88em}
+a{color:var(--accent)}
+
+header.top{padding-block:48px 28px;display:grid;gap:16px;border-bottom:1px solid var(--rule)}
+.lede{font-size:19px;color:var(--ink-2);max-width:62ch}
+
+.pipe{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin-top:8px}
+.pipe .step{flex:1 1 150px;min-width:0;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:10px 12px;display:grid;gap:2px}
+.pipe .step b{font-family:var(--display);font-stretch:90%;font-size:15px}
+.pipe .step span{font-size:13px;color:var(--ink-2)}
+.pipe .step.ai{border-color:var(--accent);background:var(--accent-soft)}
+.pipe .arrow{align-self:center;color:var(--muted);font-family:var(--mono)}
+@media (max-width:640px){.pipe{flex-direction:column}.pipe .arrow{transform:rotate(90deg);align-self:flex-start;margin-left:16px}}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px 16px;padding-block:20px;border-bottom:1px solid var(--rule);font-size:14px}
+nav.toc a{text-decoration:none;color:var(--ink-2)}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--accent);text-decoration:underline}
+
+.key{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px;color:var(--ink-2);padding-block:16px}
+.key i{display:inline-block;vertical-align:middle;margin-right:6px}
+.sw{width:10px;height:14px;border-radius:2px}
+.ln{width:22px;height:0;border-top:2px solid var(--ink)}
+.ln.d{border-top:2px dashed var(--muted)}
+.bx{width:16px;height:12px;background:var(--pause);border:1px solid var(--up);border-radius:2px}
+
+section.opt{padding-block:48px;border-bottom:1px solid var(--rule);display:grid;gap:24px}
+.opt-head{display:grid;gap:8px}
+.oneliner{font-size:18px;color:var(--ink-2)}
+.verdict-pill{justify-self:start;font-family:var(--mono);font-size:12px;padding:3px 8px;border-radius:4px;border:1px solid}
+.v-strong{color:var(--good);background:var(--good-bg);border-color:var(--good)}
+.v-support{color:var(--warn);background:var(--warn-bg);border-color:var(--warn)}
+.v-no{color:var(--bad);background:var(--bad-bg);border-color:var(--bad)}
+
+.how{display:grid;gap:10px}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.facts div{background:var(--surface);padding:10px 12px;display:grid;gap:2px;min-width:0}
+.facts dt{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.facts dd{margin:0;font-size:14px}
+@media (max-width:760px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.pc>div{min-width:0}
+.pc h3{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.pc ul{margin:0;padding-left:20px;display:grid;gap:4px;font-size:15px}
+.tag-pro{color:var(--good)} .tag-con{color:var(--bad)}
+@media (max-width:640px){.pc{grid-template-columns:1fr}}
+
+.figs{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:820px){.figs{grid-template-columns:1fr}}
+figure{margin:0;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:14px;display:grid;gap:10px;min-width:0;align-content:start}
+figure .ft{font-family:var(--display);font-stretch:90%;font-weight:700;font-size:16px}
+figcaption{font-size:14px;color:var(--ink-2)}
+svg.chart{width:100%;height:auto;display:block;overflow:visible}
+.minis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.minis>div{min-width:0;display:grid;gap:4px}
+.minis .stats{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+
+/* chart marks */
+.c-up{fill:var(--up);stroke:var(--up)} .c-dn{fill:var(--down);stroke:var(--down)}
+.wick-up{stroke:var(--up);stroke-width:1} .wick-dn{stroke:var(--down);stroke-width:1}
+.grid{stroke:var(--rule);stroke-width:1}
+.pbox{fill:var(--pause);stroke:var(--up);stroke-width:1;stroke-dasharray:2 2}
+.lvl{stroke:var(--ink);stroke-width:2}
+.sl{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 3}
+.hl{stroke:var(--ink-2);stroke-width:1.5;stroke-dasharray:6 4}
+.zone{fill:var(--zone)}
+.fill-dot{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+.t{fill:var(--ink);font-family:var(--mono);font-size:11px}
+.t2{fill:var(--ink-2);font-family:var(--mono);font-size:10.5px}
+.tm{fill:var(--muted);font-family:var(--mono);font-size:10px}
+.chip-good{fill:var(--good-bg);stroke:var(--good)} .chip-bad{fill:var(--bad-bg);stroke:var(--bad)} .chip-warn{fill:var(--warn-bg);stroke:var(--warn)} .chip-n{fill:var(--surface);stroke:var(--ink-2)}
+.i-good{fill:var(--good)} .i-bad{fill:var(--bad)} .i-warn{fill:var(--warn)}
+.s1{stroke:var(--up);stroke-width:2;fill:none} .s2{stroke:var(--down);stroke-width:2;fill:none}
+.d1{fill:var(--up)} .d2{fill:var(--down)}
+.cross{stroke:var(--muted);stroke-width:1}
+.tip-bg{fill:var(--surface);stroke:var(--rule)}
+
+/* labelling mock */
+.labeller{display:grid;gap:8px;border-top:1px solid var(--rule);padding-top:10px}
+.labeller .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.labeller .lbl{font-family:var(--mono);font-size:11px;color:var(--muted);margin-right:4px}
+.btn{font:500 13px var(--body);padding:5px 12px;border-radius:4px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);cursor:pointer}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn[aria-pressed="true"].take{background:var(--good-bg);border-color:var(--good);color:var(--good)}
+.btn[aria-pressed="true"].skip{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.btn.reason{font-size:12px;padding:3px 9px;border-radius:12px}
+.btn.reason[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+/* reviewer reply */
+.reply{font-family:var(--mono);font-size:12.5px;line-height:1.5;background:var(--bg);border:1px solid var(--rule);border-radius:4px;padding:10px 12px;white-space:pre-wrap;overflow-x:auto;margin:0}
+.reply .k{color:var(--muted)} .reply .veto{color:var(--bad);font-weight:500} .reply .ok{color:var(--good);font-weight:500}
+
+/* comparison */
+.tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600}
+
+section.plain{padding-block:48px;display:grid;gap:20px;border-bottom:1px solid var(--rule)}
+ol.steps{margin:0;padding-left:22px;display:grid;gap:12px;max-width:72ch}
+ol.steps li::marker{font-family:var(--mono);color:var(--accent)}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.choice{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:14px;display:grid;gap:6px;align-content:start}
+.choice.rec{border-color:var(--accent);background:var(--accent-soft)}
+.choice b{font-family:var(--display);font-stretch:90%;font-size:17px}
+.choice span{font-size:14px;color:var(--ink-2)}
+.note{font-size:13px;color:var(--muted);max-width:80ch}
+footer{padding-block:24px;font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">Scout · AI layer proposal · 7 Nov 2026</div>
+  <h1>Scout Lens</h1>
+  <p class="lede">Scout's C# rules already find the pauses. They can't weigh the small things you see on the chart: a pause sitting under last week's high, a move that has run too far, a messy pause. Scout Lens is a layer that sits after the detector and decides, for each setup the rules find, whether to <b>take it, skip it, or trade it smaller</b>. This page lays out five ways to build it, with two chart examples for each.</p>
+  <div class="pipe" aria-label="Where the AI layer sits">
+    <div class="step"><b>1H candles</b><span>IC Markets / broker B feed</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Detector</b><span>C# rules, unchanged. Finds every pause.</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Candidate</b><span><code>setups.csv</code> row + order picture</span></div>
+    <div class="arrow">→</div>
+    <div class="step ai"><b>Scout Lens</b><span>take · skip · smaller size</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Order</b><span>Buy Stop / Sell Stop, then TM</span></div>
+  </div>
+  <p class="note">The rules stay the safety net. The layer can only remove or shrink an order the rules already wanted. It never invents one.</p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#o1">1 · Setup scorer</a>
+  <a href="#o2">2 · Learn your eye</a>
+  <a href="#o3">3 · Claude chart reviewer</a>
+  <a href="#o4">4 · Auto-tune thresholds</a>
+  <a href="#o5">5 · End-to-end deep learning</a>
+  <a href="#compare">Side by side</a>
+  <a href="#plan">Recommendation</a>
+  <a href="#decide">Your decision</a>
+</nav>
+
+<div class="key" aria-label="Chart key">
+  <span><i class="sw" style="background:var(--up)"></i>rising candle</span>
+  <span><i class="sw" style="background:var(--down)"></i>falling candle</span>
+  <span><i class="bx"></i>pause</span>
+  <span><i class="ln"></i>stop entry level</span>
+  <span><i class="ln d"></i>stop-loss (far side of pause)</span>
+  <span>All candle charts use made-up candles to show the idea; scores and R values on them are examples, not results.</span>
+</div>
+
+<!-- ============ OPTION 1 ============ -->
+<section class="opt" id="o1">
+  <div class="opt-head">
+    <div class="eyebrow">Option 1</div>
+    <h2>Setup scorer</h2>
+    <p class="oneliner">A small machine-learning model gives every setup a score: the profit it expects in R. Scout takes high scores, shrinks middling ones and skips low ones.</p>
+    <span class="verdict-pill v-strong">Strong fit · recommended</span>
+  </div>
+  <div class="how">
+    <p>Each candidate becomes one row of numbers. Most are already in <code>setups.csv</code>: pause candles, pause height and move in ATR, pull-back, ATR, and whether it agrees with the 4H trend. We add context the rules don't use: hour and session, how many steps into the staircase this pause is, distance to the last swing high or low, spread, and recent volatility. A gradient-boosted tree model (LightGBM) is trained in Python on years of replayed setups, saved as an ONNX file, and loaded by <code>Trader.Scout</code> through ONNX Runtime. Scoring takes under a millisecond.</p>
+    <dl class="facts">
+      <div><dt>Data to start</dt><dd>10,000+ labelled setups from replaying years of 1H history</dd></div>
+      <div><dt>Runs</dt><dd>Inside Trader.Scout (C#), offline</dd></div>
+      <div><dt>Effort</dt><dd>Medium. The replay simulator is the big piece.</dd></div>
+      <div><dt>Main risk</dt><dd>Overfitting; future data leaking into training</dd></div>
+    </dl>
+  </div>
+  <div class="pc">
+    <div><h3><span class="tag-pro">+</span> Pros</h3><ul>
+      <li>The standard, proven approach for filtering signals from a rule-based system.</li>
+      <li>Works with thousands of examples, not millions.</li>
+      <li>You can see which inputs pushed each score up or down.</li>
+      <li>Same answer every time; fully backtestable over years.</li>
+      <li>No outside service; runs in the bot.</li>
+    </ul></div>
+    <div><h3><span class="tag-con">−</span> Cons</h3><ul>
+      <li>Needs a replay simulator that plays out fills, stop-loss and trailing before any training.</li>
+      <li>Learns only caveats you can turn into a number.</li>
+      <li>Needs retraining as markets change.</li>
+      <li>The live trial (a few hundred setups so far) is far too small to train on alone.</li>
+    </ul></div>
+  </div>
+  <div class="figs">
+    <figure>
+      <div class="ft">A score for every step of the staircase</div>
+      <div id="f1a"></div>
+      <figcaption>The rules see four valid pauses. The scorer rates the fourth low: the move before it is long, it is the fourth step, and the pause is deep. Skipping it avoids the loss when the trend rolls over.</figcaption>
+    </figure>
+    <figure>
+      <div class="ft">Why the fourth setup scored −0.30R</div>
+      <div id="f1b"></div>
+      <figcaption>Each bar is one input's push on the score, starting from the average setup (+0.22R). This breakdown is logged with every decision, so you can check the model's reasoning.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ OPTION 2 ============ -->
+<section class="opt" id="o2">
+  <div class="opt-head">
+    <div class="eyebrow">Option 2</div>
+    <h2>Learn your eye</h2>
+    <p class="oneliner">You mark candidates take or skip, with a quick reason. A model learns to predict your call.</p>
+    <span class="verdict-pill v-support">Supporting role</span>
+  </div>
+  <div class="how">
+    <p>Scout's candidates, live or from replayed history, appear on a small labelling screen with the order picture. You tap Take or Skip and pick a reason. Your labels train a classifier on the same feature rows as option 1, or on the chart pictures themselves. Your reasons also become a written list of caveats that options 1 and 3 can use.</p>
+    <dl class="facts">
+      <div><dt>Data to start</dt><dd>1,000–3,000 of your labels</dd></div>
+      <div><dt>Runs</dt><dd>Like option 1 once trained</dd></div>
+      <div><dt>Effort</dt><dd>Medium–high: a labelling screen plus your time</dd></div>
+      <div><dt>Main risk</dt><dd>Copies your habits, the bad ones too</dd></div>
+    </dl>
+  </div>
+  <div class="pc">
+    <div><h3><span class="tag-pro">+</span> Pros</h3><ul>
+      <li>Captures the context you see and the rules miss, the "not mathematical" part.</li>
+      <li>Turns your judgment into a written caveat list.</li>
+      <li>Keeps you in the loop while Scout learns.</li>
+    </ul></div>
+    <div><h3><span class="tag-con">−</span> Cons</h3><ul>
+      <li>Takes a lot of your time, about 15 minutes a day for months.</li>
+      <li>Learns what you would take, not what pays. It must be checked against real outcomes.</li>
+      <li>A model that reads chart pictures needs far more labels than one person can make.</li>
+      <li>Your eye shifts over time, so early and late labels disagree.</li>
+    </ul></div>
+  </div>
+  <div class="figs">
+    <figure>
+      <div class="ft">The labelling screen</div>
+      <div id="f2a"></div>
+      <div class="labeller" aria-label="Labelling mockup">
+        <div class="row"><span class="lbl">YOUR CALL</span>
+          <button class="btn take" id="lb-take" aria-pressed="false" type="button">Take</button>
+          <button class="btn skip" id="lb-skip" aria-pressed="true" type="button">Skip</button></div>
+        <div class="row"><span class="lbl">REASON</span>
+          <button class="btn reason" id="r1" aria-pressed="true" type="button">under prior high</button>
+          <button class="btn reason" id="r2" aria-pressed="false" type="button">move too stretched</button>
+          <button class="btn reason" id="r3" aria-pressed="false" type="button">messy pause</button>
+          <button class="btn reason" id="r4" aria-pressed="false" type="button">news soon</button></div>
+      </div>
+      <figcaption>Mockup. The buy stop sits just under an earlier high, so you skip it and tag the reason. Each tap is one training example.</figcaption>
+    </figure>
+    <figure>
+      <div class="ft">Same numbers, different call</div>
+      <div class="minis"><div><div id="f2b1"></div><div class="stats">pause 3 · height 0.4 ATR · move 3.2 ATR</div></div><div><div id="f2b2"></div><div class="stats">pause 3 · height 0.4 ATR · move 3.2 ATR</div></div></div>
+      <figcaption>To the rules these two setups are identical. You took the left and skipped the right because of the old high just above. The model can learn that only if it sees "distance to prior high", as a number or in the picture.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ OPTION 3 ============ -->
+<section class="opt" id="o3">
+  <div class="opt-head">
+    <div class="eyebrow">Option 3</div>
+    <h2>Claude chart reviewer</h2>
+    <p class="oneliner">When a setup fires, Scout shows Claude the chart and your caveat list. Claude answers approve, smaller size, or veto, with a reason.</p>
+    <span class="verdict-pill v-strong">Strong fit · recommended, shadow mode first</span>
+  </div>
+  <div class="how">
+    <p>On each <code>NewStop</code> or <code>NewReversal</code>, Scout sends the order picture it already draws (converted to PNG), the setup row, the last 100 candles of 1H and 4H, and your caveats written in plain English. Claude replies in a fixed JSON shape. Fixed rules around it: Claude can only veto or shrink; if it is slow or down, Scout falls back to the rules alone; the model version is pinned; every prompt and reply is logged.</p>
+    <dl class="facts">
+      <div><dt>Data to start</dt><dd>None. Your caveat list, in words.</dd></div>
+      <div><dt>Runs</dt><dd>API call from Scout, a few seconds; fine on 1H</dd></div>
+      <div><dt>Effort</dt><dd>Low–medium</dd></div>
+      <div><dt>Main risk</dt><dd>Inconsistent answers; outside dependency</dd></div>
+    </dl>
+  </div>
+  <div class="pc">
+    <div><h3><span class="tag-pro">+</span> Pros</h3><ul>
+      <li>No training. Write a new caveat today and it applies at the next candle.</li>
+      <li>Gives a reason for every decision, in words you can check.</li>
+      <li>Handles fuzzy context: nearby levels, stretched moves, messy pauses.</li>
+      <li>Reads the same picture you look at.</li>
+    </ul></div>
+    <div><h3><span class="tag-con">−</span> Cons</h3><ul>
+      <li>Its "confidence" is not a real probability.</li>
+      <li>Can answer differently on the same setup.</li>
+      <li>Slow and costly to backtest over years of setups.</li>
+      <li>Depends on an outside API; model updates can change its behaviour.</li>
+      <li>Can sound convincing while wrong, so shadow mode comes first.</li>
+    </ul></div>
+  </div>
+  <div class="figs">
+    <figure>
+      <div class="ft">Veto: selling into support</div>
+      <div id="f3a"></div>
+<pre class="reply"><span class="k">verdict</span>  <span class="veto">veto</span>
+<span class="k">caveat</span>   stop next to a tested level
+<span class="k">reason</span>   Sell stop is 0.3 ATR above a support zone
+         that held twice in the last 20 candles.
+         Little room before the level.</pre>
+      <figcaption>The rules see a clean downtrend pause. Claude sees the zone that bounced price twice. Here the order would have filled and reversed for a full loss.</figcaption>
+    </figure>
+    <figure>
+      <div class="ft">Approve: first pause off a turn</div>
+      <div id="f3b"></div>
+<pre class="reply"><span class="k">verdict</span>  <span class="ok">approve</span>
+<span class="k">caveat</span>   none triggered
+<span class="k">reason</span>   First pause after a clear turn with a
+         higher low. About 2.4 ATR of room up to
+         the old breakdown level.</pre>
+      <figcaption>This is one of the setups your markups show you like: the first small pause right after a bottom. Claude approves it and says why.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ OPTION 4 ============ -->
+<section class="opt" id="o4">
+  <div class="opt-head">
+    <div class="eyebrow">Option 4</div>
+    <h2>Auto-tune the thresholds</h2>
+    <p class="oneliner">Search for the rule settings (pause length, maximum pause height, minimum move) that made the most R in the past.</p>
+    <span class="verdict-pill v-support">Side tool only</span>
+  </div>
+  <div class="how">
+    <p>An optimiser tries thousands of setting combinations against replayed history and keeps the best set, which then goes into <code>scout.json</code>. Nothing new runs inside Scout. Useful as a check that today's settings are reasonable, not as the AI layer.</p>
+    <dl class="facts">
+      <div><dt>Data to start</dt><dd>Replay results (same as option 1)</dd></div>
+      <div><dt>Runs</dt><dd>Offline; Scout just gets new numbers</dd></div>
+      <div><dt>Effort</dt><dd>Low once replay exists</dd></div>
+      <div><dt>Main risk</dt><dd>High overfitting</dd></div>
+    </dl>
+  </div>
+  <div class="pc">
+    <div><h3><span class="tag-pro">+</span> Pros</h3><ul>
+      <li>Cheapest option.</li>
+      <li>Rules stay readable; no new moving parts in the bot.</li>
+      <li>Shows how sensitive the setup is to each setting.</li>
+    </ul></div>
+    <div><h3><span class="tag-con">−</span> Cons</h3><ul>
+      <li>The easiest way to fit the past and fail live.</li>
+      <li>Adds no new context; it only moves the same lines.</li>
+      <li>The best settings drift as markets change.</li>
+    </ul></div>
+  </div>
+  <div class="figs">
+    <figure>
+      <div class="ft">Total R by setting, 2019–2024</div>
+      <div id="f4a"></div>
+      <figcaption>The single best cell (+41R) is surrounded by weak neighbours, so it is luck. Settings inside the dashed plateau are all good, which makes them a safer pick.</figcaption>
+    </figure>
+    <figure>
+      <div class="ft">Tuned settings after tuning stops</div>
+      <div id="f4b"></div>
+      <figcaption>Tuned on 2019–2024, the best-looking settings beat the defaults by a wide margin. On data they never saw (2025–26) they fall back while the defaults keep going.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ OPTION 5 ============ -->
+<section class="opt" id="o5">
+  <div class="opt-head">
+    <div class="eyebrow">Option 5</div>
+    <h2>End-to-end deep learning</h2>
+    <p class="oneliner">A neural network (or reinforcement learning) reads raw candles and decides buy or sell by itself, with no pause rules.</p>
+    <span class="verdict-pill v-no">Not recommended</span>
+  </div>
+  <div class="how">
+    <p>The network replaces the detector instead of helping it. It needs huge amounts of data and GPU training, then runs through ONNX like option 1.</p>
+    <dl class="facts">
+      <div><dt>Data to start</dt><dd>Hundreds of thousands of examples or more</dd></div>
+      <div><dt>Runs</dt><dd>GPU training; ONNX in Scout</dd></div>
+      <div><dt>Effort</dt><dd>High</dd></div>
+      <div><dt>Main risk</dt><dd>Learns noise; can't explain itself</dd></div>
+    </dl>
+  </div>
+  <div class="pc">
+    <div><h3><span class="tag-pro">+</span> Pros</h3><ul>
+      <li>Could in theory find patterns nobody wrote down.</li>
+      <li>No hand-made inputs needed.</li>
+    </ul></div>
+    <div><h3><span class="tag-con">−</span> Cons</h3><ul>
+      <li>Throws away the setup you have spent weeks teaching Scout.</li>
+      <li>Needs far more data than 1H forex and crypto history provide.</li>
+      <li>Fits noise easily; reinforcement learning on markets is unstable.</li>
+      <li>Gives no reason for any trade.</li>
+    </ul></div>
+  </div>
+  <div class="figs">
+    <figure>
+      <div class="ft">Signals with no story</div>
+      <div id="f5a"></div>
+      <figcaption>The network fires buys and sells wherever its output crosses a line. None of them are tied to a pause, and none come with a reason you can check.</figcaption>
+    </figure>
+    <figure>
+      <div class="ft">Accuracy while training</div>
+      <div id="f5b"></div>
+      <figcaption>Training accuracy climbs toward 90%. On data it hasn't seen it stays near a coin flip. That gap means it is memorising the past.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ COMPARISON ============ -->
+<section class="plain" id="compare">
+  <div class="eyebrow">Side by side</div>
+  <h2>The five options compared</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Option</th><th>Data to start</th><th>Runs in Scout</th><th>Explains decisions</th><th>Fuzzy caveats</th><th>Backtest over years</th><th>Effort</th><th>Fit</th></tr></thead>
+    <tbody>
+      <tr><td>1 · Setup scorer</td><td>Replayed history</td><td>Yes, ONNX in C#</td><td>Input-by-input breakdown</td><td>Only if measurable</td><td>Yes</td><td>Medium</td><td><span class="verdict-pill v-strong">Strong</span></td></tr>
+      <tr><td>2 · Learn your eye</td><td>Your labels</td><td>Yes, after training</td><td>Your tagged reasons</td><td>Yes</td><td>Partly</td><td>Medium–high</td><td><span class="verdict-pill v-support">Supporting</span></td></tr>
+      <tr><td>3 · Claude reviewer</td><td>None</td><td>API call</td><td>Yes, in words</td><td>Yes</td><td>Slow and costly</td><td>Low–medium</td><td><span class="verdict-pill v-strong">Strong</span></td></tr>
+      <tr><td>4 · Auto-tune</td><td>Replayed history</td><td>Config only</td><td>Yes</td><td>No</td><td>Yes, overfits</td><td>Low</td><td><span class="verdict-pill v-support">Side tool</span></td></tr>
+      <tr><td>5 · Deep learning</td><td>Huge</td><td>Yes, ONNX</td><td>No</td><td>Maybe</td><td>Yes, overfits</td><td>High</td><td><span class="verdict-pill v-no">No</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ PLAN ============ -->
+<section class="plain" id="plan">
+  <div class="eyebrow">Recommendation</div>
+  <h2>Options 1 and 3 together, in shadow mode first</h2>
+  <p>The scorer handles what can be measured; the reviewer handles what can only be described. Every time you think "the rules miss X", X becomes either a new scorer input (if it can be measured) or a new line in the reviewer's caveat list (if it can't).</p>
+  <ol class="steps">
+    <li><b>Build the dataset.</b> Add an outcome simulator to <code>--replay</code> that plays every historical setup forward with Scout's real order rules: stop entry, stop-loss at the far side of the pause, trailing, 16-candle expiry, cancel when the setup ends. Run it on several years of 1H candles across 20+ symbols. Each setup gets its result in R.</li>
+    <li><b>Baseline.</b> Before any ML, slice the results by the existing fields: with or against 4H, pause height, staircase step, session. One plain filter is often most of the gain. The trial review due 10 Nov feeds straight into this.</li>
+    <li><b>Train the scorer.</b> Walk-forward, with a gap between training and test periods so overlapping staircase setups don't leak. Judge it by total R and R per trade, not win rate.</li>
+    <li><b>Add the reviewer.</b> Write your caveat list; wire the Claude call with the fixed reply shape, veto-only rights and a fallback.</li>
+    <li><b>Shadow mode, 2–4 weeks.</b> Both write their score or verdict to a new <code>ai.csv</code>, linked by order id, but change nothing. Afterwards, compare the setups they would have skipped with what really happened.</li>
+    <li><b>Switch on.</b> Only if the skipped setups really did worse, and total R goes up, not just win rate.</li>
+  </ol>
+  <p class="note">Two warnings. Filtering changes the strategy: you take every pause on purpose and accept the losers, so a filter that cuts losers will also cut some big staircase winners. And every input must be known when the candle closes; the 4H trend tag and the pause edges are where future data most often slips in.</p>
+</section>
+
+<section class="plain" id="decide">
+  <div class="eyebrow">Your decision</div>
+  <h2>Pick a starting point</h2>
+  <div class="choices">
+    <div class="choice rec"><b>A · Options 1 + 3</b><span>Recommended. Start with the replay dataset, then the scorer, then the reviewer, all in shadow mode.</span></div>
+    <div class="choice"><b>B · Option 3 first</b><span>Fastest to see something. Claude reviewer in shadow mode next week; the dataset comes after.</span></div>
+    <div class="choice"><b>C · Option 1 only</b><span>Measurable inputs only, no outside service.</span></div>
+    <div class="choice"><b>D · Wait for the 10 Nov review</b><span>Decide after the trial numbers are in.</span></div>
+  </div>
+  <p class="note">Whatever you pick, nothing changes in the running bots until you approve a plan. Rule changes still start in the Scout spec.</p>
+</section>
+
+<footer>Scout Lens · proposal for <code>~/code/Scout</code> and <code>Trader.Scout</code> · written 7 Nov 2026</footer>
+</div>
+
+<script>
+(function(){
+const NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e;}
+function rng(seed){let s=seed%2147483647;if(s<=0)s+=2147483646;return()=>((s=s*16807%2147483647)-1)/2147483646;}
+
+// Candles from waypoints: each segment walks to `to` over n candles.
+function gen(start,segs,seed){
+  const r=rng(seed);let p=start;const c=[],marks={};
+  segs.forEach(s=>{
+    const i0=c.length,p0=p,nz=s.noise??0.45,wk=s.wick??0.25;
+    for(let k=0;k<s.n;k++){
+      const tgt=p0+(s.to-p0)*(k+1)/s.n;
+      const cl=k===s.n-1?s.to:tgt+(r()-0.5)*nz;
+      const o=p;c.push({o,c:cl,h:Math.max(o,cl)+0.05+r()*wk,l:Math.min(o,cl)-0.05-r()*wk});p=cl;
+    }
+    if(s.tag)marks[s.tag]={i0,i1:c.length-1};
+  });
+  return{c,marks};
+}
+
+function chip(g,x,y,text,kind,icon,W){
+  const w=text.length*6.7+(icon?16:0)+12;x=Math.max(2,Math.min(W-w-2,x));
+  el("rect",{x,y,width:w,height:20,rx:4,class:"chip-"+kind},g);
+  if(icon)el("text",{x:x+7,y:y+14,class:"t i-"+kind,"font-weight":"600"},g,icon);
+  el("text",{x:x+(icon?21:6),y:y+14,class:"t"},g,text);
+  return w;
+}
+
+// Candlestick chart with pause / stop / stop-loss / level annotations.
+function candleChart(host,opt){
+  const W=opt.w||560,H=opt.h||270,pl=8,pr=8,pt=opt.pt??34,pb=opt.pb??30;
+  const {c,marks}=opt.data;
+  let lo=Math.min(...c.map(d=>d.l)),hi=Math.max(...c.map(d=>d.h));
+  (opt.levels||[]).forEach(l=>{lo=Math.min(lo,l.y0??l.y);hi=Math.max(hi,l.y1??l.y);});
+  const pad=(hi-lo)*0.06;lo-=pad;hi+=pad;
+  const step=(W-pl-pr)/c.length,X=i=>pl+step*(i+0.5),Y=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);
+  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,class:"chart",role:"img","aria-label":opt.label||"Candle chart"},null);
+  for(let k=0;k<=3;k++){const y=pt+k*(H-pt-pb)/3;el("line",{x1:pl,x2:W-pr,y1:y,y2:y,class:"grid"},svg);}
+  (opt.levels||[]).forEach(l=>{
+    if(l.zone){el("rect",{x:pl,y:Y(l.y1),width:W-pl-pr,height:Y(l.y0)-Y(l.y1),class:"zone"},svg);
+      el("text",{x:pl+4,y:Y(l.y0)+12,class:"t2"},svg,l.text);}
+    else{el("line",{x1:X(l.from??0)-step/2,x2:W-pr,y1:Y(l.y),y2:Y(l.y),class:"hl"},svg);
+      if(l.at!=null)el("text",{x:pl+(W-pl-pr)*l.at,y:Y(l.y)-5,class:"t2","text-anchor":"middle"},svg,l.text);
+      else el("text",{x:W-pr-4,y:Y(l.y)-5,class:"t2","text-anchor":"end"},svg,l.text);}
+  });
+  const bw=Math.max(2,step*0.62);
+  // pause boxes under candles
+  (opt.setups||[]).forEach(s=>{const m=marks[s.tag];const sub=c.slice(m.i0,m.i1+1);
+    s._hi=Math.max(...sub.map(d=>d.h));s._lo=Math.min(...sub.map(d=>d.l));
+    el("rect",{x:X(m.i0)-step/2,y:Y(s._hi)-2,width:step*(m.i1-m.i0+1),height:Y(s._lo)-Y(s._hi)+4,rx:2,class:"pbox"},svg);});
+  c.forEach((d,i)=>{const up=d.c>=d.o;
+    el("line",{x1:X(i),x2:X(i),y1:Y(d.h),y2:Y(d.l),class:up?"wick-up":"wick-dn"},svg);
+    const y1=Y(Math.max(d.o,d.c)),y2=Y(Math.min(d.o,d.c));
+    el("rect",{x:X(i)-bw/2,y:y1,width:bw,height:Math.max(1.2,y2-y1),rx:1,class:up?"c-up":"c-dn"},svg);});
+  const g=el("g",{},svg);
+  (opt.setups||[]).forEach(s=>{const m=marks[s.tag];const buy=s.side!=="sell";
+    const lvl=buy?s._hi:s._lo,far=buy?s._lo:s._hi;
+    let fi=-1;for(let i=m.i1+1;i<c.length;i++){if(buy?c[i].h>=lvl:c[i].l<=lvl){fi=i;break;}}
+    const end=fi>=0?fi:Math.min(c.length-1,m.i1+5);
+    el("line",{x1:X(m.i0)-step/2,x2:X(end),y1:Y(lvl),y2:Y(lvl),class:"lvl"},g);
+    el("line",{x1:X(m.i0)-step/2,x2:X(end),y1:Y(far),y2:Y(far),class:"sl"},g);
+    if(fi>=0)el("circle",{cx:X(fi),cy:Y(lvl),r:4,class:"fill-dot"},g,null);
+    if(s.chip){const below=(s.place||"out")==="out"?buy:!buy;
+      let y;if(below)y=Y(far)+8;else{let top=Math.max(...c.slice(m.i0,Math.min(c.length,m.i1+4)).map(d=>d.h));if(!buy)top=Math.max(top,s._hi);y=Y(top)-28;}
+      if(!buy&&below)y=Y(far)+8;
+      chip(g,X(m.i0)-step/2+(s.dx||0),y,s.chip,s.kind||"n",s.icon,W);}
+  });
+  (opt.signals||[]).forEach(sg=>{const d=c[sg.i];const buy=sg.side==="buy";
+    const y=buy?Y(d.l)+8:Y(d.h)-8,x=X(sg.i);
+    el("path",{d:buy?`M${x} ${y} l-6 10 h12 z`:`M${x} ${y} l-6 -10 h12 z`,class:buy?"d1":"d2"},svg);
+    el("text",{x,y:buy?y+22:y-14,class:"tm","text-anchor":"middle"},svg,(buy?"BUY ":"SELL ")+sg.p);});
+  (opt.notes||[]).forEach(n=>el("text",{x:n.x,y:n.y,class:n.cls||"t2","text-anchor":n.anchor||"start"},svg,n.text));
+  el("text",{x:pl,y:H-8,class:"tm"},svg,opt.foot||"1H candles · illustration");
+  host.appendChild(svg);
+}
+
+// ---------- Option 1A: staircase with scores
+candleChart(document.getElementById("f1a"),{label:"Uptrend with four pauses, each scored",
+  data:gen(100,[{to:100.6,n:4,noise:0.7},{to:104,n:6},{to:103.7,n:3,noise:0.3,tag:"p1"},{to:107.2,n:5},{to:106.8,n:3,noise:0.3,tag:"p2"},{to:110.2,n:5},{to:109.9,n:3,noise:0.3,tag:"p3"},{to:114.6,n:5},{to:114.2,n:3,noise:0.35,tag:"p4"},{to:115.1,n:1},{to:110.8,n:6}],7),
+  pt:40,
+  setups:[
+    {tag:"p1",chip:"TAKE +0.62R",kind:"good",icon:"✓",place:"out"},
+    {tag:"p2",chip:"TAKE +0.41R",kind:"good",icon:"✓",place:"out"},
+    {tag:"p3",chip:"HALF +0.08R",kind:"warn",icon:"½",place:"out"},
+    {tag:"p4",chip:"SKIP −0.30R",kind:"bad",icon:"✕",place:"in",dx:-70}]});
+
+// ---------- Option 1B: contribution waterfall
+(function(){
+  const host=document.getElementById("f1b"),W=560,H=290,lx=170,rx=W-62,top=22,rowH=30;
+  const rows=[["Average setup",0.22,"base"],["Move before pause 5.6 ATR",-0.31],["4th step of staircase",-0.17],["Pause height 1.4 ATR",-0.08],["With 4H trend",0.06],["Spread 0.3 ATR",-0.02],["Predicted",-0.30,"total"]];
+  const mn=-0.5,mx=0.4,S=v=>lx+(v-mn)/(mx-mn)*(rx-lx);
+  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,class:"chart",role:"img","aria-label":"Score breakdown for the skipped setup"});
+  [-0.4,-0.2,0,0.2,0.4].forEach(v=>{el("line",{x1:S(v),x2:S(v),y1:top-6,y2:top+rows.length*rowH,class:"grid"},svg);
+    el("text",{x:S(v),y:top+rows.length*rowH+14,class:"tm","text-anchor":"middle"},svg,(v>0?"+":v<0?"−":"")+Math.abs(v).toFixed(1)+"R");});
+  el("line",{x1:S(0),x2:S(0),y1:top-10,y2:top+rows.length*rowH,class:"lvl"},svg);
+  el("text",{x:S(0)+4,y:top-10,class:"t2"},svg,"skip below 0");
+  let run=0;
+  rows.forEach((r,i)=>{const y=top+i*rowH+5,h=rowH-10;let a,b;
+    if(r[2]==="base"){a=0;b=r[1];run=r[1];}else if(r[2]==="total"){a=0;b=r[1];}else{a=run;b=run+r[1];run=b;}
+    const x=S(Math.min(a,b)),w=Math.max(2,Math.abs(S(b)-S(a)));
+    const cls=r[2]==="total"?"chip-bad":(r[1]>=0?"d1":"d2");
+    el("rect",{x,y,width:w,height:h,rx:3,class:cls},svg);
+    el("text",{x:lx-8,y:y+h/2+4,class:r[2]?"t":"t2","text-anchor":"end"},svg,r[0]);
+    const v=(r[1]>0?"+":"−")+Math.abs(r[1]).toFixed(2);
+    el("text",{x:(r[1]>=0&&r[2]!=="total")?S(Math.max(a,b))+5:S(Math.min(a,b))-5,y:y+h/2+4,class:"t","text-anchor":(r[1]>=0&&r[2]!=="total")?"start":"end"},svg,v);
+    if(i>0&&i<rows.length-1){}
+  });
+  el("text",{x:8,y:H-6,class:"tm"},svg,"Blue raises the score, orange lowers it · example values");
+  host.appendChild(svg);
+})();
+
+// ---------- Option 2A: buy stop under prior high
+(function(){const d=gen(100,[{to:105.4,n:6},{to:105.6,n:3,noise:0.35},{to:101,n:7},{to:104.9,n:6},{to:104.7,n:4,noise:0.25,tag:"p"},{to:105.5,n:1},{to:102.6,n:5}],11);
+  const ph=Math.max(...d.c.slice(0,9).map(x=>x.h));
+  candleChart(document.getElementById("f2a"),{label:"Buy stop just under an earlier high",data:d,
+    levels:[{y:ph,text:"prior high",from:5}],
+    setups:[{tag:"p",chip:"You: SKIP",kind:"bad",icon:"✕",place:"out"}]});})();
+
+// ---------- Option 2B: two identical setups
+(function(){
+  const a=gen(100,[{to:100.4,n:3,noise:0.6},{to:103.6,n:5},{to:103.4,n:3,noise:0.2,tag:"p"},{to:106.8,n:5}],21);
+  candleChart(document.getElementById("f2b1"),{label:"Clear room above",data:a,w:280,h:250,pt:30,
+    setups:[{tag:"p",chip:"You: TAKE",kind:"good",icon:"✓",place:"out"}],foot:"open room above"});
+  const b=gen(100,[{to:104.1,n:4},{to:104.3,n:2,noise:0.3},{to:100.4,n:5},{to:103.6,n:5},{to:103.4,n:3,noise:0.2,tag:"p"},{to:104.0,n:1},{to:101.8,n:3}],22);
+  const ph=Math.max(...b.c.slice(0,6).map(x=>x.h));
+  candleChart(document.getElementById("f2b2"),{label:"Old high just above",data:b,w:280,h:250,pt:30,
+    levels:[{y:ph,text:"prior high",from:2}],
+    setups:[{tag:"p",chip:"You: SKIP",kind:"bad",icon:"✕",place:"out"}],foot:"old high 0.4 ATR above"});
+})();
+
+// ---------- Option 3A: sell into support
+(function(){const d=gen(106.5,[{to:100.4,n:6},{to:103.4,n:4},{to:100.3,n:5},{to:103.8,n:5},{to:101.0,n:6},{to:101.2,n:3,noise:0.2,tag:"p"},{to:100.5,n:1},{to:103.4,n:5}],5);
+  candleChart(document.getElementById("f3a"),{label:"Sell stop just above a support zone",data:d,
+    levels:[{zone:true,y0:99.9,y1:100.45,text:"support · held twice"}],
+    setups:[{tag:"p",side:"sell",chip:"VETO",kind:"bad",icon:"✕",place:"out",dx:-10}]});})();
+
+// ---------- Option 3B: first pause off a turn
+(function(){const d=gen(101.2,[{to:100.2,n:2},{to:94.2,n:8},{to:94.4,n:3,noise:0.5},{to:97.4,n:5},{to:97.1,n:3,noise:0.22,tag:"p"},{to:100.9,n:7}],9);
+  candleChart(document.getElementById("f3b"),{label:"First pause after a bottom",data:d,
+    levels:[{y:100.0,text:"old breakdown level",at:0.45}],
+    setups:[{tag:"p",chip:"APPROVE",kind:"good",icon:"✓",place:"out"}]});})();
+
+// ---------- Option 4A: heatmap
+(function(){
+  const host=document.getElementById("f4a"),W=560,H=344;
+  const xs=["0.6","0.8","1.0","1.2","1.4","1.6"],ys=["7","6","5","4","3","2"];
+  const v=[[41,6,9,11,8,2],[3,8,14,16,13,4],[5,12,22,24,19,7],[2,13,21,23,20,6],[-4,7,16,18,15,3],[-9,-6,1,4,2,-3]];
+  const gx=88,gy=30,cw=(W-gx-16)/6,ch=40;
+  const ramp=["#cde2fb","#9ec5f4","#6da7ec","#3987e5","#256abf","#184f95"];
+  const col=x=>x<0?"#f6c3ab":x<5?ramp[0]:x<10?ramp[1]:x<15?ramp[2]:x<20?ramp[3]:x<30?ramp[4]:ramp[5];
+  const ink=x=>x>=15?"#ffffff":"#12151a";
+  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,class:"chart",role:"img","aria-label":"Heatmap of total R by setting"});
+  v.forEach((row,j)=>row.forEach((x,i)=>{
+    const rx=gx+i*cw,ry=gy+j*ch;
+    const r=el("rect",{x:rx+1,y:ry+1,width:cw-2,height:ch-2,rx:3,fill:col(x)},svg);
+    el("title",{},r,`max pause ${xs[i]} ATR · min move ${ys[j]} ATR · ${x>=0?"+":"−"}${Math.abs(x)}R`);
+    el("text",{x:rx+cw/2,y:ry+ch/2+4,"text-anchor":"middle","font-family":"IBM Plex Mono, monospace","font-size":"12",fill:ink(x)},svg,(x>0?"+":x<0?"−":"")+Math.abs(x));
+  }));
+  el("rect",{x:gx+1,y:gy+1,width:cw-2,height:ch-2,rx:3,fill:"none",stroke:"var(--bad)","stroke-width":"2.5"},svg);
+  el("rect",{x:gx+2*cw-2,y:gy+2*ch-2,width:3*cw+4,height:3*ch+4,rx:5,fill:"none",stroke:"var(--ink)","stroke-width":"2","stroke-dasharray":"6 4"},svg);
+  xs.forEach((x,i)=>el("text",{x:gx+i*cw+cw/2,y:gy+6*ch+16,class:"tm","text-anchor":"middle"},svg,x));
+  el("text",{x:gx+3*cw,y:gy+6*ch+32,class:"t2","text-anchor":"middle"},svg,"max pause height (ATR)");
+  ys.forEach((y,j)=>el("text",{x:gx-8,y:gy+j*ch+ch/2+4,class:"tm","text-anchor":"end"},svg,y));
+  el("text",{x:14,y:gy+3*ch,class:"t2","text-anchor":"middle",transform:`rotate(-90 14 ${gy+3*ch})`},svg,"min move before pause (ATR)");
+  el("text",{x:gx+4,y:gy-8,class:"t"},svg,"↓ lucky spike");
+  el("text",{x:W-16,y:H-6,class:"tm","text-anchor":"end"},svg,"dashed: robust plateau · example values");
+  host.appendChild(svg);
+})();
+
+// Line chart with crosshair hover.
+function lineChart(host,o){
+  const W=560,H=o.h||284,pl=46,pr=86,pt=16,pb=40;
+  const n=o.series[0].values.length,X=i=>pl+i/(n-1)*(W-pl-pr),Y=v=>pt+(o.yMax-v)/(o.yMax-o.yMin)*(H-pt-pb);
+  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,class:"chart",role:"img","aria-label":o.label});
+  o.yTicks.forEach(t=>{el("line",{x1:pl,x2:W-pr,y1:Y(t),y2:Y(t),class:"grid"},svg);el("text",{x:pl-6,y:Y(t)+4,class:"tm","text-anchor":"end"},svg,o.yFmt(t));});
+  o.xTicks.forEach(([i,t])=>el("text",{x:X(i),y:H-22,class:"tm","text-anchor":"middle"},svg,t));
+  (o.hlines||[]).forEach(h=>{el("line",{x1:pl,x2:W-pr,y1:Y(h.y),y2:Y(h.y),class:"hl"},svg);el("text",{x:pl+4,y:Y(h.y)+14,class:"t2"},svg,h.text);});
+  (o.vlines||[]).forEach(v=>{el("line",{x1:X(v.i),x2:X(v.i),y1:pt,y2:H-pb,class:"lvl","stroke-dasharray":"3 3"},svg);el("text",{x:X(v.i)+5,y:pt+10,class:"t2"},svg,v.text);});
+  o.series.forEach(s=>{el("path",{d:s.values.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join(""),class:s.cls},svg);
+    const last=s.values[n-1];el("circle",{cx:X(n-1),cy:Y(last),r:4,class:s.dot,stroke:"var(--surface)","stroke-width":"2"},svg);
+    el("text",{x:X(n-1)+8,y:Y(last)+4+(s.dy||0),class:"t"},svg,s.name);});
+  const cross=el("line",{y1:pt,y2:H-pb,class:"cross",visibility:"hidden"},svg);
+  const tip=el("g",{visibility:"hidden"},svg),tbg=el("rect",{rx:4,class:"tip-bg",height:18+o.series.length*14,width:150},tip);
+  const tt=el("text",{class:"t"},tip),lines=[el("tspan",{},tt)].concat(o.series.map(()=>el("tspan",{},tt)));
+  const hit=el("rect",{x:pl,y:pt,width:W-pl-pr,height:H-pt-pb,fill:"transparent"},svg);
+  function move(ev){const r=svg.getBoundingClientRect(),sx=(ev.clientX-r.left)/r.width*W;
+    const i=Math.max(0,Math.min(n-1,Math.round((sx-pl)/(W-pl-pr)*(n-1))));
+    cross.setAttribute("x1",X(i));cross.setAttribute("x2",X(i));cross.setAttribute("visibility","visible");
+    const tx=X(i)>W/2?X(i)-158:X(i)+8;tbg.setAttribute("x",tx);tbg.setAttribute("y",pt+4);
+    lines[0].setAttribute("x",tx+8);lines[0].setAttribute("y",pt+18);lines[0].textContent=o.xFmt(i);
+    o.series.forEach((s,k)=>{const ln=lines[k+1];ln.setAttribute("x",tx+8);ln.setAttribute("y",pt+32+k*14);ln.textContent=s.name+": "+o.yFmt(s.values[i]);});
+    tip.setAttribute("visibility","visible");}
+  hit.addEventListener("pointermove",move);hit.addEventListener("pointerleave",()=>{cross.setAttribute("visibility","hidden");tip.setAttribute("visibility","hidden");});
+  el("text",{x:8,y:H-1,class:"tm"},svg,o.foot);
+  host.appendChild(svg);
+}
+
+// ---------- Option 4B: equity curves
+(function(){const r=rng(31),n=94,tuned=[],def=[];let a=0,b=0;
+  for(let i=0;i<n;i++){const oos=i>=72;a+=oos?(r()-0.62)*2.2:0.85+(r()-0.5)*1.6;b+=0.45+(r()-0.5)*1.8;tuned.push(+a.toFixed(1));def.push(+b.toFixed(1));}
+  const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  lineChart(document.getElementById("f4b"),{label:"Equity of tuned vs default settings",
+    series:[{name:"tuned",values:tuned,cls:"s1",dot:"d1"},{name:"default",values:def,cls:"s2",dot:"d2",dy:0}],
+    yMin:-5,yMax:Math.ceil((Math.max(...tuned,...def)+5)/20)*20,yTicks:[0,20,40,60],yFmt:v=>(v>0?"+":v<0?"−":"")+Math.abs(Math.round(v))+"R",
+    xTicks:[[0,"2019"],[24,"2021"],[48,"2023"],[72,"2025"],[93,"Oct 26"]],xFmt:i=>months[i%12]+" "+(2019+Math.floor(i/12)),
+    vlines:[{i:72,text:"tuning stops"}],foot:"cumulative R, monthly · example values"});})();
+
+// ---------- Option 5A: signals with no story
+candleChart(document.getElementById("f5a"),{label:"Model buy and sell signals on raw candles",
+  data:gen(100,[{to:102,n:6},{to:100.6,n:5},{to:104,n:6},{to:103,n:4},{to:105.8,n:5},{to:103.6,n:6},{to:105,n:5},{to:102.4,n:5}],13),
+  pt:40,pb:44,
+  signals:[{i:4,side:"buy",p:".57"},{i:10,side:"sell",p:".55"},{i:16,side:"buy",p:".61"},{i:24,side:"sell",p:".53"},{i:30,side:"buy",p:".58"},{i:37,side:"sell",p:".56"}],
+  notes:[{x:552,y:16,text:"why here? no answer",anchor:"end",cls:"t"}],foot:"1H candles · p = model output · illustration"});
+
+// ---------- Option 5B: train vs validation accuracy
+(function(){const r=rng(41),n=50,tr=[],va=[];
+  for(let i=0;i<n;i++){tr.push(+(0.52+0.41*(1-Math.exp(-i/14))+(r()-0.5)*0.012).toFixed(3));
+    va.push(+(0.515+0.03*Math.exp(-((i-8)**2)/40)-0.0004*i+(r()-0.5)*0.014).toFixed(3));}
+  lineChart(document.getElementById("f5b"),{label:"Training vs unseen-data accuracy",
+    series:[{name:"training",values:tr,cls:"s1",dot:"d1"},{name:"unseen",values:va,cls:"s2",dot:"d2"}],
+    yMin:0.4,yMax:1.0,yTicks:[0.4,0.5,0.6,0.7,0.8,0.9,1.0],yFmt:v=>Math.round(v*100)+"%",
+    xTicks:[[0,"1"],[9,"10"],[19,"20"],[29,"30"],[39,"40"],[49,"50"]],xFmt:i=>"epoch "+(i+1),
+    hlines:[{y:0.5,text:"coin flip"}],foot:"accuracy by training epoch · example values"});})();
+
+// labelling mock toggles
+const takeB=document.getElementById("lb-take"),skipB=document.getElementById("lb-skip");
+takeB.addEventListener("click",()=>{takeB.setAttribute("aria-pressed","true");skipB.setAttribute("aria-pressed","false");});
+skipB.addEventListener("click",()=>{skipB.setAttribute("aria-pressed","true");takeB.setAttribute("aria-pressed","false");});
+document.querySelectorAll(".btn.reason").forEach(b=>b.addEventListener("click",()=>b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")==="true"?"false":"true")));
+})();
+</script>
