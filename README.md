@@ -8,7 +8,7 @@ In a running trend, every pause for profit taking gets a stop order just beyond 
 |---|---|
 | Status | **Phase 1 built** (29-Oct-2026): Scout_Pine compiles and runs on TradingView. **Scout bot agreed** (03-Nov-2026): C#, Watch and Trade modes; not built yet |
 | Specification | [docs/spec.md](docs/spec.md) — the single source of truth (setup rules, settings, phases, open questions, history) |
-| Scout_Pine | [pine/Scout_Pine.pine](pine/Scout_Pine.pine) — TradingView indicator, Pine Script v6 |
+| Scout_Pine | [pine/Scout_Pine.pine](pine/Scout_Pine.pine) — TradingView indicator, Pine Script v6. **Closed for development** (07-Nov-2026): new rules go only into the C# bot ([spec §3](docs/spec.md#3-scout_pine-phase-1)) |
 | Scout (bot) | Watches cTrader prices; **Watch** mode alerts, **Trade** mode places the first stop order and TM manages the rest. Code in Trader as `src/Trader.Scout` ([spec §4](docs/spec.md#4-scout-bot-agreed-03-nov-2026)) |
 | Research | [research/setup-examples](research/setup-examples) — the marked-up charts; [research/prototype](research/prototype) — the Python check of the rules |
 | Related | [Trader](https://github.com/ziash/Trader) (TM manages the orders you place), [Rewind](https://github.com/ziash/Rewind), [Levels](https://github.com/ziash/Levels) |

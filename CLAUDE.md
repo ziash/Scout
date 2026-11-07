@@ -10,7 +10,7 @@ Standing instructions for Claude Code in this repository. Read this first, then 
 
 1. **Code only when the owner says so.** Spec and planning discussions do not authorise coding. Build the phase asked for (spec §6), not the next ones.
 2. **Spec-driven.** Any change in decisions, scope or design goes into `docs/spec.md`: bump its version in the header table, add a row to its history (§8), update the open questions (§7) and the phase table (§6). Commit messages like `scout v1.1: <what changed>`. Code comments point at spec sections, e.g. `(spec §3.1)`.
-3. **The setup is the owner's, learned from examples.** The owner reads charts by eye and says the market is not mathematical. Rules come from their markups (`research/setup-examples/`); a rule change is checked against those markups with the prototype before it goes into Scout_Pine.
+3. **The setup is the owner's, learned from examples.** The owner reads charts by eye and says the market is not mathematical. Rules come from their markups (`research/setup-examples/`); a rule change is written in `docs/spec.md`, then built and checked against those markups in the Scout bot's C# code (Trader `src/Trader.Scout`: detector tests and the replay). **Scout_Pine and the Python prototype are closed for development (owner, 07-Nov-2026, spec §3)**: don't change them.
 4. **Define difficult terms.** The owner is a telecom core-network engineer, not a developer: explain technical terms (Pine, C#, trading) briefly in plain words.
 5. **Explain before large changes**, in a few lines.
 6. **Short, direct answers.**
@@ -23,12 +23,11 @@ Standing instructions for Claude Code in this repository. Read this first, then 
 
 ## Tech stack and conventions
 
-- **Scout_Pine:** Pine Script v6, one file `pine/Scout_Pine.pine`. The second comment line carries the spec version it implements. Only closed candles change the state (no repainting); the "level hit" alert is the one intrabar part.
-- **Prototype:** `research/prototype/proto.py` (Python, pandas) runs the same rules in the same order as Scout_Pine. Keep the two in step. Downloaded candles (`research/prototype/data/`) and the venv are never committed.
+- **Scout_Pine (closed 07-Nov-2026):** Pine Script v6, one file `pine/Scout_Pine.pine`. The second comment line carries the spec version it implements. Only closed candles change the state (no repainting); the "level hit" alert is the one intrabar part.
+- **Prototype (frozen with Scout_Pine):** `research/prototype/proto.py` (Python, pandas) runs Scout_Pine's v1.0 rules in the same order. Downloaded candles (`research/prototype/data/`) and the venv are never committed.
 - **Scout bot (later):** C#, .NET 10 LTS, `src/Trader.Scout` in the Trader repository, under Trader's CLAUDE.md and conventions.
 
 ## Before finishing a task
 
 - Pine cannot be compiled here. Re-read the script against the spec and Pine v6 rules; if a TradingView session is available, paste it into the Pine Editor and check "Compiled. Added to chart."; otherwise say plainly that the owner's TradingView check is still due.
-- Prototype changes: rerun it on the markup windows (spec §2.3) and update that table.
 - Commit and `git push` (the owner works from GitHub `main`).

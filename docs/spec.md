@@ -5,10 +5,10 @@
 | Item | Value |
 |---|---|
 | Status | **Phase 1 built** (29-Oct-2026): `Scout_Pine` compiles and runs on TradingView (ICMARKETS:EURUSD 1H). **Scout bot agreed** (03-Nov-2026, §4): Open API service in the Trader repository, Watch and Trade modes. **Trial run from 03-Nov-2026** (§4.6): Trade mode, 0.1 lot, 1H, TM managing; review after one week. From 04-Nov-2026: IC Markets only, 18 symbols; from 07-Nov-2026: Pepperstone only, same 18 (§4.6). **Daily first** (owner, 07-Nov-2026, §4.7): the daily chart sets direction and the first entry, 4H/1H pauses add on — decided, to be measured on history before the rules change |
-| Document version | v1.7 (07-Nov-2026) — history in §8 |
+| Document version | v1.8 (07-Nov-2026) — history in §8 |
 | Owner | Zeeshan |
 | Repository | [github.com/ziash/Scout](https://github.com/ziash/Scout) (public) — separate from [Trader](https://github.com/ziash/Trader), [Rewind](https://github.com/ziash/Rewind) and [Levels](https://github.com/ziash/Levels) |
-| Family | **Scout_Pine** (Phase 1): TradingView indicator, `pine/Scout_Pine.pine`. **Scout** (Phases 3–5): a C# bot on Ubuntu that watches cTrader prices; code in Trader as `src/Trader.Scout` (§4, §5) |
+| Family | **Scout_Pine** (Phase 1): TradingView indicator, `pine/Scout_Pine.pine` — **closed for development 07-Nov-2026** (§3). **Scout** (Phases 3–5): a C# bot on Ubuntu that watches cTrader prices; code in Trader as `src/Trader.Scout` (§4, §5) |
 | Accounts | Scout_Pine never trades. Scout: demo accounts only until a go-live is decided (Trader shared.md §4) |
 
 ---
@@ -59,6 +59,8 @@ Learned from the owner's chart and markups (29-Oct-2026), not from fixed numbers
 It also finds pauses the owner did not mark: about 2–3 setups per chart per day on 1H.
 
 ## 3. Scout_Pine (Phase 1)
+
+**Closed for development (owner, 07-Nov-2026).** Scout_Pine stays as built (v1.0 rules, §3.1–3.2) and can still be used on TradingView, but new rules (§4.7, §4.8 and later) go only into the Scout bot's C# code in Trader. The Python prototype (§2.3) is frozen with it; the C# detector, its tests and the replay are the reference from now on.
 
 A TradingView indicator, Pine Script v6 (TradingView's own scripting language), one file `pine/Scout_Pine.pine`. Chart title "Scout_Pine", legend "Scout".
 
@@ -192,7 +194,7 @@ From the owner's USTEC markups of Oct–Nov 2026 (daily, 4H, 1H; charts and expl
 
 The higher charts give the first entry (e.g. the daily Sell Stop under a range low); the lower ones scale the position up. 30M and 15M are new timeframes for Scout (today: 1H, 4H, daily).
 
-**Order of work:** these change the rules, so each is first measured on years of history (Trader scout-lens.md §8 step 1: the replay with outcomes, tagging each setup with the daily direction, its retracement depth and one-candle pauses), checked against the markups with the prototype (CLAUDE.md rule 3), then put into Scout_Pine and Trader's detector. 
+**Order of work:** these change the rules, so each is first measured on years of history (Trader scout-lens.md §8 step 1: the replay with outcomes, tagging each setup with the daily direction, its retracement depth and one-candle pauses), checked against the markups (CLAUDE.md rule 3), then built into Trader's C# detector (Scout_Pine is closed, §3).
 
 ### 4.8 Lower-timeframe confirmation (owner, 07-Nov-2026)
 
@@ -201,9 +203,9 @@ From the same markups (USTEC 1H, 14 Oct 2026 14:00, and its twelve 5-minute cand
 | # | Rule (owner, 07-Nov-2026) | How it is measured | Used for |
 |---|---|---|---|
 | L1 | **Strong trend: few pauses up high, pauses down low.** A higher-timeframe move with no pause yet, while a lower chart of the ladder shows pauses, is a strong trend; lower timeframes give more chances to join it | For each pause on a chart of the ladder: the number of pauses the next higher chart has had in the same leg (0 = strong) | Tag on every setup; entries on the lower chart in that leg are taken at full size |
-| L2 | **Pause confirmed on a lower timeframe.** Decompose the pause candle(s) into a lower timeframe (1H → 5M: twelve candles). The pause is strong when (a) the correction's **bodies stay within 38.2 %** of the lower-timeframe impulse into the pause, and (b) **every counter-trend candle is answered within 1–2 candles** by a candle in the trend's direction | (a) deepest body close of the correction, as a fraction of the impulse leg on the lower chart; (b) for each counter-trend candle, the number of candles until the next with-trend candle; strong = all within 2. Lower chart about 1/12 of the pause chart: D1 → 1H, 4H → 15M, 1H → 5M, 30M → 5M, 15M → 1M (proposal) | Tag on every setup (strong · normal · weak); later: size and the AI layer |
+| L2 | **Pause confirmed on a lower timeframe.** Decompose the pause candle(s) into a lower timeframe (1H → 5M: twelve candles). The pause is strong when (a) the correction's **bodies stay within 38.2 %** of the lower-timeframe impulse into the pause, and (b) **every counter-trend candle is answered within 1–2 candles** by a candle in the trend's direction | (a) deepest body close of the correction, as a fraction of the impulse leg on the lower chart; (b) for each counter-trend candle, the number of candles until the next with-trend candle; strong = all within 2. Lower chart: D1 → 1H, 4H → 15M, 1H → 5M, 30M → 5M, 15M → 5M — **5M is the lowest chart consulted; no 1M** (owner, 07-Nov-2026) | Tag on every setup (strong · normal · weak); later: size and the AI layer |
 
-Like §4.7, these are first measured on years of history (the replay tags every setup with L1 and L2), checked against the markups with the prototype (CLAUDE.md rule 3), then built into Scout_Pine and Trader's detector. The replay needs the lower-timeframe candles (5-minute history for a 1H Scout).
+Like §4.7, these are first measured on years of history (the replay tags every setup with L1 and L2), checked against the markups (CLAUDE.md rule 3), then built into Trader's C# detector (Scout_Pine is closed, §3). The replay needs the lower-timeframe candles (5-minute history for a 1H Scout).
 
 ## 5. Separation
 
@@ -217,7 +219,7 @@ Like §4.7, these are first measured on years of history (the replay tags every 
 |---|---|---|
 | 0 | Repo and spec | Done 29-Oct-2026 |
 | 1 | Scout_Pine: marks and alerts on TradingView | Built 29-Oct-2026; compiles (§3.6) |
-| 2 | Owner review on more charts; tune §3.2 | Due |
+| 2 | Owner review on more charts; tune §3.2 | Closed 07-Nov-2026 with Scout_Pine (§3); tuning continues in the C# bot from the replay |
 | 3 | Scout detector in C# (`src/Trader.Scout`, no broker), same results as Scout_Pine / the prototype on the markups; then I1 higher-timeframe trend (§4.4) | Built 03-Nov-2026 |
 | 4 | **Watch** mode: live cTrader demo candles, alerts (§4.1, §4.3); `trader-scout` service | Built with Phase 5, 03-Nov-2026 |
 | 5 | **Trade** mode: Scout places the entry stop; `"Scout-"` added to TM's `takeOver` (Trader change) | Trial run from 03-Nov-2026 (§4.6) |
@@ -251,3 +253,4 @@ Like §4.7, these are first measured on years of history (the replay tags every 
 | v1.5 | 07-Nov-2026 | **Daily first** (owner, §4.7): the daily chart sets direction and the first entry; 4H/1H pauses add on in its direction only (against it: alerts with a reason); add-ons same size; retracement ≤ 0.382 full, 0.382–0.5 smaller, > 0.5 skip; a one-candle pull-back counts as a pause; an "Automatic orders" switch. To be measured on history before the rules change (q11). Trial moved to Pepperstone 07-Nov (Trader scout.md v1.15) |
 | v1.6 | 07-Nov-2026 | **Daily first, completed** (owner, §4.7): 0.382–0.5 retracement = half size (D4); **entry ladder** (D2): direction and key levels from the daily and monthly charts, entries from the daily chart down to the chart Scout is set on (1H: daily, 4H, 1H); 30M and 15M planned as new timeframes. Open: 15M itself in a 15M ladder (q11) |
 | v1.7 | 07-Nov-2026 | **Lower-timeframe confirmation** (owner, §4.8): L1 strong trend = no pause yet on the higher chart while a lower chart pauses; L2 a pause confirmed on a lower timeframe (bodies within 38.2 %, counter-trend candles answered within 1–2 candles). Entry ladder: a 15M Scout also enters on 15M (§4.7). The owner's USTEC charts and their explanation added: `research/setup-examples/USTEC-2026-10` |
+| v1.8 | 07-Nov-2026 | **Scout_Pine closed for development** (owner, §3): new rules go only into the C# bot in Trader; the Python prototype frozen with it; phase 2 closed. Lower-timeframe check (§4.8 L2): **5M is the lowest chart consulted**, no 1M (15M → 5M) |
