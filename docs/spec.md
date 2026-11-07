@@ -4,8 +4,8 @@
 
 | Item | Value |
 |---|---|
-| Status | **Phase 1 built** (29-Oct-2026): `Scout_Pine` compiles and runs on TradingView (ICMARKETS:EURUSD 1H). **Scout bot agreed** (03-Nov-2026, §4): Open API service in the Trader repository, Watch and Trade modes. **Trial run from 03-Nov-2026** (§4.6): Trade mode, 0.1 lot, 1H, TM managing; review after one week. From 04-Nov-2026: IC Markets only, 18 symbols (§4.6) |
-| Document version | v1.4 (04-Nov-2026) — history in §8 |
+| Status | **Phase 1 built** (29-Oct-2026): `Scout_Pine` compiles and runs on TradingView (ICMARKETS:EURUSD 1H). **Scout bot agreed** (03-Nov-2026, §4): Open API service in the Trader repository, Watch and Trade modes. **Trial run from 03-Nov-2026** (§4.6): Trade mode, 0.1 lot, 1H, TM managing; review after one week. From 04-Nov-2026: IC Markets only, 18 symbols; from 07-Nov-2026: Pepperstone only, same 18 (§4.6). **Daily first** (owner, 07-Nov-2026, §4.7): the daily chart sets direction and the first entry, 4H/1H pauses add on — decided, to be measured on history before the rules change |
+| Document version | v1.5 (07-Nov-2026) — history in §8 |
 | Owner | Zeeshan |
 | Repository | [github.com/ziash/Scout](https://github.com/ziash/Scout) (public) — separate from [Trader](https://github.com/ziash/Trader), [Rewind](https://github.com/ziash/Rewind) and [Levels](https://github.com/ziash/Levels) |
 | Family | **Scout_Pine** (Phase 1): TradingView indicator, `pine/Scout_Pine.pine`. **Scout** (Phases 3–5): a C# bot on Ubuntu that watches cTrader prices; code in Trader as `src/Trader.Scout` (§4, §5) |
@@ -163,10 +163,24 @@ Entry rules will be refined further by the owner ("we will further refine its en
 | Mode | **Trade** on every chart below |
 | Timeframe | **1H** (4H for the I1 tag only) |
 | Symbols | From 04-Nov-2026 (owner), top three per market: EURUSD, GBPUSD, USDJPY; GBPJPY, EURJPY, AUDJPY; XAUUSD, XAGUSD, XPTUSD; US500, USTEC, DE40; XTIUSD, XBRUSD, XNGUSD; BTCUSD, ETHUSD, SOLUSD. 03–04 Nov: TM's six (AUDJPY, EURGBP, EURUSD, GBPJPY, BTCUSD, ETHUSD) |
-| Accounts | From 04-Nov-2026: IC Markets (brokerA) only. 03–04 Nov: both demos, IC Markets and Pepperstone (brokerB), each with its own detector on its own candles |
+| Accounts | From 07-Nov-2026 17:27Z (owner): Pepperstone (brokerB) only, for fresh results (Trader scout.md v1.15). 04–07 Nov: IC Markets (brokerA) only. 03–04 Nov: both demos, IC Markets and Pepperstone (brokerB), each with its own detector on its own candles |
 | Size | **0.1 lot** per Scout order; TM's mirror adds the same, so 0.2 lot per trade (q2). From 04-Nov-2026 (owner): a fixed size per symbol, small, so a typical 1H move is worth about the same money on every symbol (≈ $15 per order; forex still 0.1 lot) — values in Trader `config/scout.json` |
 | Logs | Scout: every setup event and every order, fill and close (Trader `docs/bots/scout.md` §3); TM: its own `actions.csv` |
 | Review | After one week (≈ 10-Nov-2026): from both bots' logs, score the setups — fill rate, win rate and R per trade, *with* vs *against* the 4H trend, main vs reversal stops, per symbol, market and broker — and suggest changes to the rules (§3.2) |
+
+### 4.7 Daily first: timeframes top-down (owner, 07-Nov-2026)
+
+From the owner's USTEC markups of Oct–Nov 2026 (daily, 4H, 1H): the **daily chart sets the direction and the first entry** — a stop just beyond a daily level, e.g. a Sell Stop under a daily range low after a top; a daily support zone that held twice becomes resistance once broken ("Sell Stop #2"). **4H and 1H pauses are re-entries that add to the position**, only in the daily direction.
+
+| # | Decision (owner, 07-Nov-2026) | Rule today | Change |
+|---|---|---|---|
+| D1 | **Trade with the daily trend.** 4H/1H pauses against the daily direction are not traded, even in Trade mode; they are reported as alerts, with the reason in the logs and on the dashboard | Higher timeframe only tagged (q9; 1H ← 4H) | Daily direction as a filter; 4H tag kept |
+| D2 | **First entry from the daily chart**; placed automatically during the test. An "Automatic orders" on/off switch on the dashboard, to turn off before a live account | Only 1H pauses | A daily entry, found from the daily picture (Trader scout-lens.md §1.2) |
+| D3 | **Add-ons: same size**, as many as the rules allow (the margin budget still applies); the AI layer may later skip some | One order per pause, same size | None — every aligned pause is an add-on |
+| D4 | **Retracement of the move:** up to Fib 0.382 = full size (ideal); 0.382–0.5 = smaller; deeper than 0.5 = skip (0.618 is too much) | Pause cancelled beyond 0.6 of the move (§3.2) | 0.5 limit, smaller size above 0.382 |
+| D5 | **A one-candle pull-back is a pause** — a strong trend where few traders close ("Sell Stop beautifully at only 1 candle retrace") | A pause needs 2 candles before a stop is placed (§2.1 rule 3, §3.1 step 4) | Stop from the 1st pause candle |
+
+**Order of work:** these change the rules, so each is first measured on years of history (Trader scout-lens.md §8 step 1: the replay with outcomes, tagging each setup with the daily direction, its retracement depth and one-candle pauses), checked against the markups with the prototype (CLAUDE.md rule 3), then put into Scout_Pine and Trader's detector. Open: how much smaller the 0.382–0.5 size is (half?); whether the daily first entry is a rule (the detector on D1) or the daily picture's level (Claude), or both.
 
 ## 5. Separation
 
@@ -200,6 +214,7 @@ Entry rules will be refined further by the owner ("we will further refine its en
 | 8 | Alert channel | Desktop pop-ups via Trader's notifications for orders placed and refused; everything in the logs. Telegram or other later (§4.3) |
 | 9 | ~~Higher-timeframe trend: skip or mark?~~ — **decided 03-Nov-2026: mark only**, 1H ← 4H, 4H ← 1D, 1D ← 1W (§4.4 I1); skipping reconsidered from the trial's logs | — |
 | 10 | ~~Reversal stops as orders?~~ — **decided 03-Nov-2026: yes**, paired with the main stop, one cancels the other (§4.4 I4) | — |
+| 11 | Daily first (§4.7): D1–D5 decided by the owner 07-Nov-2026; open: size for 0.382–0.5 retracements; daily first entry by rule (D1 detector), by the daily picture (Claude), or both | Measured on history first |
 
 ## 8. History
 
@@ -210,3 +225,4 @@ Entry rules will be refined further by the owner ("we will further refine its en
 | v1.2 | 03-Nov-2026 | **Decisions for the trial run** (owner asked Claude to choose, §4.6): q7 Scout cancels its own unfilled order when the setup ends + server expiry after 16 candles; q9 higher-timeframe trend marked only; q10 reversal stops placed as orders, one cancels the other; q3 stop-loss at the far side of the pause with trailing on; q2 0.1 lot. Trial from 03-Nov-2026 in Trade mode on 1H, six symbols, both demos; review after a week |
 | v1.3 | 04-Nov-2026 | **Trial widened** (owner, §4.6): IC Markets only, 18 symbols — top three per market (forex majors, forex crosses, metals, indices, energies, crypto); Pepperstone dropped. Same rules, mode, timeframe and lot size. Trader: scout.md v1.4 |
 | v1.4 | 04-Nov-2026 | **Size per symbol** (owner, §4.6): fixed lots per symbol so a 1H ATR is worth ≈ $15 per order everywhere (forex 0.1 lot); risk per trade shown in a later Scout screen. Trader: scout.md v1.5 |
+| v1.5 | 07-Nov-2026 | **Daily first** (owner, §4.7): the daily chart sets direction and the first entry; 4H/1H pauses add on in its direction only (against it: alerts with a reason); add-ons same size; retracement ≤ 0.382 full, 0.382–0.5 smaller, > 0.5 skip; a one-candle pull-back counts as a pause; an "Automatic orders" switch. To be measured on history before the rules change (q11). Trial moved to Pepperstone 07-Nov (Trader scout.md v1.15) |
