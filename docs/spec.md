@@ -5,7 +5,7 @@
 | Item | Value |
 |---|---|
 | Status | **Phase 1 built** (29-Oct-2026): `Scout_Pine` compiles and runs on TradingView (ICMARKETS:EURUSD 1H). **Scout bot agreed** (03-Nov-2026, §4): Open API service in the Trader repository, Watch and Trade modes. **Trial run from 03-Nov-2026** (§4.6): Trade mode, 0.1 lot, 1H, TM managing; review after one week. From 04-Nov-2026: IC Markets only, 18 symbols; from 07-Nov-2026: Pepperstone only, same 18 (§4.6). **Daily first** (owner, 07-Nov-2026, §4.7): the daily chart sets direction and the first entry, 4H/1H pauses add on — decided, to be measured on history before the rules change |
-| Document version | v1.9 (07-Nov-2026) — history in §8 |
+| Document version | v1.10 (08-Nov-2026) — history in §8 |
 | Owner | Zeeshan |
 | Repository | [github.com/ziash/Scout](https://github.com/ziash/Scout) (public) — separate from [Trader](https://github.com/ziash/Trader), [Rewind](https://github.com/ziash/Rewind) and [Levels](https://github.com/ziash/Levels) |
 | Family | **Scout_Pine** (Phase 1): TradingView indicator, `pine/Scout_Pine.pine` — **closed for development 07-Nov-2026** (§3). **Scout** (Phases 3–5): a C# bot on Ubuntu that watches cTrader prices; code in Trader as `src/Trader.Scout` (§4, §5) |
@@ -128,7 +128,7 @@ The mode is set per symbol × timeframe in Scout's config, so a chart can be wat
 - Scout only **alerts or places the entry order**. It never moves or amends an order, and never touches a position.
 - The order carries what the owner would set by hand: a **stop-loss at the far side of the pause** (the other side's level, §2.1 rule 4) and the **trailing switch on**. TM uses the stop-loss as its hedge level H and makes the break-even stops trail (tm.md §3, §5).
 - TM takes the order over by its label (`"Scout-"` in TM's `takeOver`, Trader tm.md §2.1): mirror order beside it, hedges once filled, break-even at 1R, trailing stop (tm.md §3.1, §5).
-- **An unfilled order whose setup is gone** (q7, decided 03-Nov-2026): Scout **cancels its own unfilled order** when its rules end the setup — trend turned, pause too long or too deep, or the other order of the same pause filled (q10). As a safety net for when Scout is not running, every order has an **expiry on the server**: 16 candles after it is placed (the longest a pause lasts, §3.2). TM cancels its mirror order when Scout's order is cancelled or expires (tm.md §3.1).
+- **An unfilled order whose setup is gone** (q7, decided 03-Nov-2026): Scout **cancels its own unfilled order** when its rules end the setup — trend turned, pause too long or too deep, or the other order of the same pause filled (q10). As a safety net for when Scout is not running, every order has an **expiry on the server**: 16 candles after the candle that gave its level (the longest a pause lasts, §3.2), so a late placement never gives an old setup a fresh 16 candles. A level the live price has already passed gets no order (v1.10). TM cancels its mirror order when Scout's order is cancelled or expires (tm.md §3.1).
 
 ### 4.3 Alerts
 
@@ -254,3 +254,4 @@ Like §4.7, these are first measured on years of history (the replay tags every 
 | v1.7 | 07-Nov-2026 | **Lower-timeframe confirmation** (owner, §4.8): L1 strong trend = no pause yet on the higher chart while a lower chart pauses; L2 a pause confirmed on a lower timeframe (bodies within 38.2 %, counter-trend candles answered within 1–2 candles). Entry ladder: a 15M Scout also enters on 15M (§4.7). The owner's USTEC charts and their explanation added: `research/setup-examples/USTEC-2026-10` |
 | v1.8 | 07-Nov-2026 | **Scout_Pine closed for development** (owner, §3): new rules go only into the C# bot in Trader; the Python prototype frozen with it; phase 2 closed. Lower-timeframe check (§4.8 L2): **5M is the lowest chart consulted**, no 1M (15M → 5M) |
 | v1.9 | 07-Nov-2026 | **30M is the lowest trading chart** (owner, §4.7): the 15M ladder row withdrawn; 15M and 5M only for checks (§4.8), 5M the lowest |
+| v1.10 | 08-Nov-2026 | §4.2 (owner: implement the independent review, Trader scout.md v1.25): expiry counts from the candle that gave the level; a level the price has already passed gets no order |
