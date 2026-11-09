@@ -5,7 +5,7 @@
 | Item | Value |
 |---|---|
 | Status | **Phase 1 built** (29-Oct-2026): `Scout_Pine` compiles and runs on TradingView (ICMARKETS:EURUSD 1H). **Scout bot agreed** (03-Nov-2026, §4): Open API service in the Trader repository, Watch and Trade modes. **Trial run from 03-Nov-2026** (§4.6): Trade mode, 0.1 lot, 1H, TM managing; review after one week. From 04-Nov-2026: IC Markets only, 18 symbols; from 07-Nov-2026: Pepperstone only, same 18 (§4.6). **Daily first** (owner, 07-Nov-2026, §4.7): the daily chart sets direction and the first entry, 4H/1H pauses add on — decided, to be measured on history before the rules change |
-| Document version | v1.10 (08-Nov-2026) — history in §8 |
+| Document version | v1.11 (09-Nov-2026) — history in §8 |
 | Owner | Zeeshan |
 | Repository | [github.com/ziash/Scout](https://github.com/ziash/Scout) (public) — separate from [Trader](https://github.com/ziash/Trader), [Rewind](https://github.com/ziash/Rewind) and [Levels](https://github.com/ziash/Levels) |
 | Family | **Scout_Pine** (Phase 1): TradingView indicator, `pine/Scout_Pine.pine` — **closed for development 07-Nov-2026** (§3). **Scout** (Phases 3–5): a C# bot on Ubuntu that watches cTrader prices; code in Trader as `src/Trader.Scout` (§4, §5) |
@@ -193,7 +193,9 @@ From the owner's USTEC markups of Oct–Nov 2026 (daily, 4H, 1H; charts and expl
 
 The higher charts give the first entry (e.g. the daily Sell Stop under a range low); the lower ones scale the position up. **30M is the lowest chart Scout trades on** (owner, 07-Nov-2026; an earlier 15M row is withdrawn). Lower charts (15M, 5M) are only consulted for checks (§4.8), **5M at the lowest**. 30M is a new timeframe for Scout (today: 1H, 4H, daily).
 
-**Order of work:** these change the rules, so each is first measured on years of history (Trader scout-lens.md §8 step 1: the replay with outcomes, tagging each setup with the daily direction, its retracement depth and one-candle pauses), checked against the markups (CLAUDE.md rule 3), then built into Trader's C# detector (Scout_Pine is closed, §3).
+**D1 as built (owner, 09-Nov-2026; Trader scout.md §2.10).** The daily direction is the detector's own trend on closed daily candles (the test of §4.4 I1, on the daily chart). It applies to 1H and 4H charts, to main and reversal orders alike: an order against it is not placed (*against daily*). **When the direction is unknown, the daily support and resistance zones decide: no buy near resistance, no sell near support.** A zone is at least 2 daily swing highs or lows (the highest or lowest candle of 3 on either side, in the last 250 daily candles) within 0.25 daily ATR of each other. For a buy, resistance is any zone the order level has not cleared; for a sell, support is any zone the level has not cleared, so a broken zone changes roles (the polarity flip above). *Near* = inside the zone or within 0.5 daily ATR of it. **On by default** (owner), with a switch on the dashboard's Settings page. Claude's daily picture (Trader scout-lens.md §1.2) comes later and is compared with this rule.
+
+**Order of work:** D1 was switched on by default on the owner's word, 09-Nov-2026, and is measured alongside. For the others: these change the rules, so each is first measured on years of history (Trader scout-lens.md §8 step 1: the replay with outcomes, tagging each setup with the daily direction, its retracement depth and one-candle pauses), checked against the markups (CLAUDE.md rule 3), then built into Trader's C# detector (Scout_Pine is closed, §3).
 
 ### 4.8 Lower-timeframe confirmation (owner, 07-Nov-2026)
 
@@ -255,3 +257,4 @@ Like §4.7, these are first measured on years of history (the replay tags every 
 | v1.8 | 07-Nov-2026 | **Scout_Pine closed for development** (owner, §3): new rules go only into the C# bot in Trader; the Python prototype frozen with it; phase 2 closed. Lower-timeframe check (§4.8 L2): **5M is the lowest chart consulted**, no 1M (15M → 5M) |
 | v1.9 | 07-Nov-2026 | **30M is the lowest trading chart** (owner, §4.7): the 15M ladder row withdrawn; 15M and 5M only for checks (§4.8), 5M the lowest |
 | v1.10 | 08-Nov-2026 | §4.2 (owner: implement the independent review, Trader scout.md v1.25): expiry counts from the candle that gave the level; a level the price has already passed gets no order |
+| v1.11 | 09-Nov-2026 | §4.7 D1 as built (owner): daily direction by rule, on by default with a dashboard switch; when the direction is unknown, no buy near daily resistance and no sell near daily support. Trader scout.md v1.40 |
